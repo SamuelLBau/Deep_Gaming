@@ -1,0 +1,11 @@
+Deep Gaming
+
+We would like to investigate the effectiveness of Deep-Q learning in the simple game of snake. The algorithm will take as input the pixels of the game board, and as output the next action that should be taken.  Deep Q-Learning uses a mixture of Convolution Neural Nets and Reinforcement learning to optimize play. Because Deep-Q learning is partially based on reinforcement learning, it should not require a labeled dataset. If we decide to compare the performance when using systems like a neural-net, datasets can be quickly generated from our current tools.
+
+We have selected the game snake because it has a simple set of controls and can be easily programmed. The state space should also be simple to understand, as all pixels will take on 1 of 3 values, free, snake, or food. Libraries are available that will enable us to test the framework on different games, depending on the difficulty of installing the libraries on the target system. These games will have slightly different controls, but similar inputs.
+
+The initial goal of the project will be to teach an agent to play snake at level comparable to human players. Due to the nature of the state space, the algorithm is not expected to play a perfect game of snake, merely a very good one. Stretch goals will include porting this architecture to play more complex games, though this will depend on the difficulty of installing the required libraries on the target system.
+
+Because of the simplicity of the game, we have already programmed an environment that can efficiently play many games of snake, and can display these games during or after the simulation has ended.
+
+Testing of additional games will require the installation of open AI gym and, in particular, the Atari collection of environments.
