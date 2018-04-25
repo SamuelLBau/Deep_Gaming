@@ -17,6 +17,8 @@ class deepQ():
             self.env.reset()
             for i in xrange(30):
                 self.env.step(3)
+    def run(self):
+        pass
 
 if __name__ == "__main__":
     env = snake_game()
