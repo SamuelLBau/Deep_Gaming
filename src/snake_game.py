@@ -28,12 +28,29 @@ class snake_game():
 
         self.fig = plt.figure()
 
-    def is_pos_in_list(self,sublist,cont_list):
-        for cont in cont_list:
-            if not cmp(sublist,cont):
-                return True
-        return False
-    def take_step(self,direction):
+#----------------------------------BEGIN 'PUBLIC' FUNCTIONS------------------------------
+
+    def reset(self):
+        self.board_size = self.board_size
+        self.snake = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
+                    rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
+        self.food_pos = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
+                    rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
+
+    def get_image(self):
+        board = np.zeros(self.board_size)
+        board[self.food_pos[0],self.food_pos[1]] = .5
+        for pos in self.snake:
+            board[pos[0],pos[1]] = 1
+        return board
+
+    def get_image_dims(self):
+        return self.board_size
+
+    def get_num_controls(self):
+        return 4
+
+    def step(self,direction):
         '''
             direction: Input format to be determined, but will be the up/down/left/right directions
             returns: -1 if the snake doesn't crash
@@ -64,6 +81,15 @@ class snake_game():
                 self.food_pos = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
                     rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
         return -1
+
+#------------------------------------END 'PUBLIC' FUNCTIONS-------------------------------
+#----------------------------------BEGIN 'PRIVATE' FUNCTIONS------------------------------
+
+    def is_pos_in_list(self,sublist,cont_list):
+        for cont in cont_list:
+            if not cmp(sublist,cont):
+                return True
+        return False
     def print_snake(self):
         snake_str = "{"
         for pos in self.snake:
@@ -71,14 +97,8 @@ class snake_game():
         snake_str = snake_str[:-1] + "}"
         print("PRINTING NEW SNAKE")
         print(snake_str)
-    def get_snake_np(self):
-        board = np.zeros(self.board_size)
-        board[self.food_pos[0],self.food_pos[1]] = .5
-        for pos in self.snake:
-            board[pos[0],pos[1]] = 1
-        return board
     def render_snake(self):
-        board = self.get_snake_np()
+        board = self.get_image()
         plt.figure(self.fig.number)
         plt.ion()
         plt.clf()
@@ -90,7 +110,7 @@ def main_test():
     game = snake_game()
 
     for i in xrange(1000):
-        score = game.take_step("right")
+        score = game.step("right")
         if(score > 0):
             print("Snake died at %d"%(score))
             break
