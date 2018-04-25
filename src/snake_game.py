@@ -16,7 +16,7 @@ class snake_game():
     VALID_DIRS = [[0,-1],[0,1],[-1,0],[1,0]]
     ACTION_dict = {}
 
-    def __init__(self,board_size=DEFAULT_BOARD_SIZE,init_pos=DEFAULT_INIT_POS):
+    def __init__(self,board_size=DEFAULT_BOARD_SIZE,init_pos=DEFAULT_INIT_POS,render=False,save=False):
         self.board_size = board_size
         self.snake = [init_pos] #index0 is the head, index-1 is the tail
         self.food_pos = self.DEFAULT_INIT_FOOD_POS
@@ -26,16 +26,22 @@ class snake_game():
         self.ACTION_dict[2] = self.ACTION_dict["left"] = self.VALID_DIRS[0]
         self.ACTION_dict[3] = self.ACTION_dict["right"] = self.VALID_DIRS[1]
 
+        self.render=render
+        self.save=save
+
         self.fig = plt.figure()
 
 #----------------------------------BEGIN 'PUBLIC' FUNCTIONS------------------------------
 
-    def reset(self):
-        self.board_size = self.board_size
-        self.snake = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
-                    rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
+    def reset(self,render=False,save=False):
         self.food_pos = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
                     rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
+        init_pos = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
+                    rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
+        self.snake = [init_pos]
+
+        self.render=render
+        self.save=save
 
     def get_image(self):
         board = np.zeros(self.board_size)
@@ -53,7 +59,8 @@ class snake_game():
     def step(self,direction):
         '''
             direction: Input format to be determined, but will be the up/down/left/right directions
-            returns: -1 if the snake doesn't crash
+            Can also be input as[0:3]
+            returns: [score,is_done] if the snake doesn't crash
                     final score if the snake crashes
         '''
         if not isinstance(direction,list):
@@ -66,21 +73,23 @@ class snake_game():
         next_pos = [next_pos0,next_pos1]
 
         if self.is_pos_in_list(next_pos,self.snake):
-            return len(self.snake)
+            return [len(self.snake),True]
         
         self.snake.insert(0,copy(next_pos)) #Add new head position to list
         if not self.is_pos_in_list(next_pos,[self.food_pos]): #Food wasn't eaten, remove last tail position from snake
             del self.snake[-1]
         else:
             #Food was eaten, find a new food spot
-            #TODO: Will have issues when snake gets large
-            self.food_pos = copy(next_pos)
-            self.food_pos[1] += 1
-            self.food_pos[1] = self.food_pos[1]%self.DEFAULT_BOARD_SIZE[1]
+            #TODO: Will have issues when snake gets large, consider keeping list of free values?
             while self.is_pos_in_list(self.food_pos,self.snake):
                 self.food_pos = [rand.randrange(0,self.DEFAULT_BOARD_SIZE[0]),
                     rand.randrange(0,self.DEFAULT_BOARD_SIZE[1])]
-        return -1
+
+        if self.render:
+            self.render_snake()
+        #TODO:Implement some sort of save functionality
+
+        return [len(self.snake),False]
 
 #------------------------------------END 'PUBLIC' FUNCTIONS-------------------------------
 #----------------------------------BEGIN 'PRIVATE' FUNCTIONS------------------------------
@@ -110,8 +119,8 @@ def main_test():
     game = snake_game()
 
     for i in xrange(1000):
-        score = game.step("right")
-        if(score > 0):
+        score,is_done = game.step("right")
+        if(is_done):
             print("Snake died at %d"%(score))
             break
         game.render_snake()
