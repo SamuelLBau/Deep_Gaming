@@ -10,10 +10,10 @@ import time
 import cProfile
 
 class snake_game():
-    DEFAULT_BOARD_SIZE = [64,64]
+    DEFAULT_BOARD_SIZE = [80,80]
     DEFAULT_INIT_POS = [32,32]
     DEFAULT_INIT_FOOD_POS = [32,40]
-    VALID_DIRS = [[0,-1],[0,1],[-1,0],[1,0]]
+    VALID_DIRS = [[0,0],[0,-1],[0,1],[-1,0],[1,0]]
     ACTION_dict = {}
 
     def __init__(self,board_size=DEFAULT_BOARD_SIZE,init_pos=DEFAULT_INIT_POS,render=False,save=False):
@@ -21,10 +21,11 @@ class snake_game():
         self.snake = [init_pos] #index0 is the head, index-1 is the tail
         self.food_pos = self.DEFAULT_INIT_FOOD_POS
 
-        self.ACTION_dict[0] = self.ACTION_dict["up"] = self.VALID_DIRS[2]
-        self.ACTION_dict[1] = self.ACTION_dict["down"] = self.VALID_DIRS[3]
-        self.ACTION_dict[2] = self.ACTION_dict["left"] = self.VALID_DIRS[0]
-        self.ACTION_dict[3] = self.ACTION_dict["right"] = self.VALID_DIRS[1]
+        #self.ACTION_dict[0] = self.ACTION_dict["stay"] = self.VALID_DIRS[0]
+        self.ACTION_dict[0] = self.ACTION_dict["up"] = self.VALID_DIRS[3]
+        self.ACTION_dict[1] = self.ACTION_dict["down"] = self.VALID_DIRS[4]
+        self.ACTION_dict[2] = self.ACTION_dict["left"] = self.VALID_DIRS[1]
+        self.ACTION_dict[3] = self.ACTION_dict["right"] = self.VALID_DIRS[2]
 
         self.render=render
         self.save=save
@@ -45,16 +46,16 @@ class snake_game():
 
     def get_image(self):
         board = np.zeros(self.board_size)
-        board[self.food_pos[0],self.food_pos[1]] = .5
+        board[self.food_pos[0],self.food_pos[1]] = 128
         for pos in self.snake:
-            board[pos[0],pos[1]] = 1
+            board[pos[0],pos[1]] = 255
         return board
 
     def get_image_dims(self):
         return self.board_size
 
     def get_num_controls(self):
-        return 4
+        return len( self.VALID_DIRS)
 
     def step(self,direction):
         '''
@@ -68,12 +69,14 @@ class snake_game():
         if not self.is_pos_in_list(direction,self.VALID_DIRS):
             error_str = "Snake game INVALID ACTION %s"%(str(direction))
             raise RuntimeError(error_str)
+        if direction[0] == direction[1] and direction[1] == 0:
+            return [len(self.snake)-1,False]
         next_pos0 = (self.snake[0][0] + direction[0])%self.board_size[0]
         next_pos1 = (self.snake[0][1] + direction[1])%self.board_size[1]
         next_pos = [next_pos0,next_pos1]
 
         if self.is_pos_in_list(next_pos,self.snake):
-            return [len(self.snake),True]
+            return [len(self.snake)-1,True]
         
         self.snake.insert(0,copy(next_pos)) #Add new head position to list
         if not self.is_pos_in_list(next_pos,[self.food_pos]): #Food wasn't eaten, remove last tail position from snake
@@ -89,7 +92,7 @@ class snake_game():
             self.render_snake()
         #TODO:Implement some sort of save functionality
 
-        return [len(self.snake),False]
+        return [len(self.snake)-1,False]
 
 #------------------------------------END 'PUBLIC' FUNCTIONS-------------------------------
 #----------------------------------BEGIN 'PRIVATE' FUNCTIONS------------------------------
