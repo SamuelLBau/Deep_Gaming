@@ -1,15 +1,19 @@
 import numpy
 from snake_game import snake_game
 import tensorflow as tf
+import os
 
 import random
 import numpy as np
-
 from collections import deque
+
+from caffe_builder import build_CNN
 
 #Used for display
 import sys
 import time
+
+
 
 #Assumes game_env has the following funtions:
 #step(control) Accepts an integer 0->#controls-1, returns (score,done)
@@ -21,14 +25,11 @@ import time
 #CNN_struct
 
 class deepQ():
-
-    def __init__(self,game_env,board_size,n_board_frames,num_actions,CNN_struct,cost_struct,n_episodes=100,e_init=.5,
-        e_final=.05,gamma=.99,n_obs_timesteps=500,n_explore_timesteps=500,n_prev_states=590000,minibatch_size=32,
+    #[80,80],4,4,
+    def __init__(self,game_env,caffe_file,cost_struct,n_episodes=100,e_init=.5,e_final=.05,gamma=.99,
+        n_obs_timesteps=500,n_explore_timesteps=500,n_prev_states=590000,minibatch_size=32,
         frames_per_action=1,game_name="name_unspecified"):
         self.env = game_env
-        self.board_size = board_size
-        self.n_board_frames = n_board_frames
-        self.num_actions = num_actions
         self.n_episodes = n_episodes
         self.e_init = e_init
         self.e_final = e_final
@@ -41,7 +42,8 @@ class deepQ():
         build_success = True
         try:
             self.network_input,self.network_output,self.network_readout = \
-                self.build_CNN(board_size,n_board_frames,num_actions,CNN_struct,cost_struct)
+                CNN = build_CNN(caffe_file=caffe_file)
+                #self.build_CNN_old(board_size,n_board_frames,num_actions,CNN_struct,cost_struct)
         except Exception as ex_val:
             error_message = str(ex_val)
             print(  "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=\n" + \
@@ -63,36 +65,6 @@ class deepQ():
 
         #s, readout, h_fc1=self.asri_create_network()
         #self.asri_train_network(self.env,s,readout,h_fc1,session)
-    def build_CNN(self,board_shape,board_frames,num_actions,CNN_struct,cost_struct):
-        self.cost_struct = cost_struct
-        '''
-            Builds the CNN based on a designated structure
-            #TODO: write-out structure and valid inputs
-            
-            #TODO: Determine method of generating CNN_struct in above sections
-
-
-        '''
-        #------------BEGIN CREATING NETWORK
-        network_input = tf.placeholder("float", [None, board_shape[0], board_shape[1], board_frames])
-
-        current_parent = network_input
-        for hidden_layer in CNN_struct[:-1]:
-            current_parent = self.assemble_layer(current_parent,hidden_layer)
-
-        network_output = current_parent
-        readout_layer = self.assemble_layer(network_output,CNN_struct[-1])
-        #TODO: Verify the number of output nodes == num_actions, throw error if otherwise
-
-        #TODO: Consider creating cost function builder
-        # define the cost function
-        self.actions = tf.placeholder("float", [None, num_actions])
-        self.outputs = tf.placeholder("float", [None])
-        readout_action = tf.reduce_sum(tf.multiply(readout_layer, self.actions), reduction_indices = 1)
-        cost = tf.reduce_mean(tf.square(self.outputs - readout_action))
-        self.train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
-
-        return network_input,network_output,readout_layer
     def train_CNN(self,env,session,network_input,network_output,network_readout):
         env.reset()
         single_board_frame_shape = [self.board_size[0],self.board_size[1],1]
@@ -203,82 +175,45 @@ class deepQ():
                 print "TIMESTEP", t, "/ Steps/s", steps_per_second, "/ EPSILON", e, "/ ACTION", action_index, "/ REWARD", cur_reward, "/ Q_MAX %e" % np.max(readout_t)
                 start_time = time.time()
         pass
-    def assemble_layer(self,current_parent,layer_info):
-        cur_layer = None
-        
-        #-----------------Begin helper funtions-----------------------------------------
-        def create_W(shape,std):
-            return tf.Variable(tf.truncated_normal(shape, stddev = std))
+#Close deepQ
+def call_asri_network_to_CNN_struct():
+    return asri_network_to_CNN_struct()
 
-        def create_B(val,shape):
-            return tf.Variable(tf.constant(val, shape = shape))
-        
-        def create_matmul(parent,W_mat):
-            return tf.matmul(parent, W_mat)
-        def create_conv2d(parent, W_mat, strides):
-            return tf.nn.conv2d(parent, W_mat, strides = strides, padding = "SAME")
+if __name__ == "__main__":
+    env = snake_game()
+    cost_struct = []
 
-        def create_pool2(parent,strides,ksize):
-            return tf.nn.max_pool(parent, strides = strides,ksize = ksize, padding = "SAME")
-        
-        if "function" in layer_info:
-            layer_function = layer_info["function"]
-            function_name = layer_function["name"]
-            if function_name == "conv2d":
-                conv_stride = layer_function["stride"]
-                W_shape = layer_function["W_shape"]
-                W_std = layer_function["W_std"]
-                W_var = create_W(W_shape,W_std)
+    import sys
+    if len(sys.argv) < 2:
+        raise Exception("Path of caffe file must be passed in")
+    else:
+        proto_file = sys.argv[1]
+        if not os.path.isfile(proto_file):
+            raise Exception("Caffe file not found: %s"%(str(e)))
+    
+    network = deepQ(env,proto_file,cost_struct,game_name="tetris")
+    network.train()
 
-                func = create_conv2d(current_parent,W_var,conv_stride)
-            elif function_name == "matmul":
-                W_shape = layer_function["W_shape"]
-                W_std   = layer_function["W_std"]
-                W_var = create_W(W_shape,W_std)
 
-                func  = create_matmul(current_parent,W_var)
-            else:
-                raise Exception(str("Unrecognized layer function (%s)"%(function_name)))
 
-        layer_type = layer_info["type"]
-        if layer_type == "pool":
-            strides=layer_info["strides"]
-            ksize=layer_info["ksize"]
-
-            cur_layer = create_pool2(current_parent,strides,ksize)
-        elif layer_type == "relu":
-            if not "function" in layer_info:
-                raise Exception("RELU Layer expects a function, none were provided")
-            try:
-                B_val = layer_info["B_val"]
-                B_shape = layer_info["B_shape"]
-                B_var = create_B(B_val,B_shape)
-            except:
-                raise Exception("Invalid/Missing values for relu bias variable")
-            #Assumes function assigned above
-            cur_layer = tf.nn.relu(func + B_var)
-        elif layer_type == "reshape":
-            shape = layer_info["shape"]
-            cur_layer = tf.reshape(current_parent, shape)
-        elif layer_type == "matmul":
-
-            W_shape = layer_info["W_shape"]
-            W_std   = layer_info["W_std"]
-            W_var = create_W(W_shape,W_std)
-
-            func  = create_matmul(current_parent,W_var)
-
-            try:
-                B_val = layer_info["B_val"]
-                B_shape = layer_info["B_shape"]
-                B_var = create_B(B_val,B_shape)
-            except:
-                raise Exception("Invalid/Missing values for relu bias variable")
-
-            cur_layer = create_matmul(current_parent,W_var) + B_var
-        else:
-            raise Exception(str("Unrecognized layer type (%s)"%(layer_type)))
-        return cur_layer
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
+#+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=
 
 def asri_network_to_CNN_struct():
     n_actions = 4
@@ -365,14 +300,116 @@ def asri_network_to_CNN_struct():
 
     return [layer_1,layer_2,layer_3,layer_4,layer_5,layer_6,layer_7]
 
-if __name__ == "__main__":
-    env = snake_game()
-    CNN_struct = asri_network_to_CNN_struct()
-    cost_struct = []
+'''
+def build_CNN_old(self,board_shape,board_frames,num_actions,CNN_struct,cost_struct):
+    self.cost_struct = cost_struct
     
-    network = deepQ(env,[80,80],4,4,CNN_struct,cost_struct,game_name="tetris")
-    network.train()
+        Builds the CNN based on a designated structure
+        #TODO: write-out structure and valid inputs
+        
+        #TODO: Determine method of generating CNN_struct in above sections
 
+
+    
+    #------------BEGIN CREATING NETWORK
+    network_input = tf.placeholder("float", [None, board_shape[0], board_shape[1], board_frames])
+
+    current_parent = network_input
+    for hidden_layer in CNN_struct[:-1]:
+        current_parent = self.assemble_layer(current_parent,hidden_layer)
+
+    network_output = current_parent
+    readout_layer = self.assemble_layer(network_output,CNN_struct[-1])
+    #TODO: Verify the number of output nodes == num_actions, throw error if otherwise
+
+    #TODO: Consider creating cost function builder
+    # define the cost function
+    self.actions = tf.placeholder("float", [None, num_actions])
+    self.outputs = tf.placeholder("float", [None])
+    readout_action = tf.reduce_sum(tf.multiply(readout_layer, self.actions), reduction_indices = 1)
+    cost = tf.reduce_mean(tf.square(self.outputs - readout_action))
+    self.train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
+
+    return network_input,network_output,readout_layer
+
+def assemble_layer(self,current_parent,layer_info):
+    cur_layer = None
+    
+    #-----------------Begin helper funtions-----------------------------------------
+    def create_W(shape,std):
+        return tf.Variable(tf.truncated_normal(shape, stddev = std))
+
+    def create_B(val,shape):
+        return tf.Variable(tf.constant(val, shape = shape))
+    
+    def create_matmul(parent,W_mat):
+        return tf.matmul(parent, W_mat)
+    def create_conv2d(parent, W_mat, strides):
+        return tf.nn.conv2d(parent, W_mat, strides = strides, padding = "SAME")
+
+    def create_pool2(parent,strides,ksize):
+        return tf.nn.max_pool(parent, strides = strides,ksize = ksize, padding = "SAME")
+    
+    if "function" in layer_info:
+        layer_function = layer_info["function"]
+        function_name = layer_function["name"]
+        if function_name == "conv2d":
+            conv_stride = layer_function["stride"]
+            W_shape = layer_function["W_shape"]
+            W_std = layer_function["W_std"]
+            W_var = create_W(W_shape,W_std)
+
+            func = create_conv2d(current_parent,W_var,conv_stride)
+        elif function_name == "matmul":
+            W_shape = layer_function["W_shape"]
+            W_std   = layer_function["W_std"]
+            W_var = create_W(W_shape,W_std)
+
+            func  = create_matmul(current_parent,W_var)
+        else:
+            raise Exception(str("Unrecognized layer function (%s)"%(function_name)))
+
+    layer_type = layer_info["type"]
+    if layer_type == "pool":
+        strides=layer_info["strides"]
+        ksize=layer_info["ksize"]
+
+        cur_layer = create_pool2(current_parent,strides,ksize)
+    elif layer_type == "relu":
+        if not "function" in layer_info:
+            raise Exception("RELU Layer expects a function, none were provided")
+        try:
+            B_val = layer_info["B_val"]
+            B_shape = layer_info["B_shape"]
+            B_var = create_B(B_val,B_shape)
+        except:
+            raise Exception("Invalid/Missing values for relu bias variable")
+        #Assumes function assigned above
+        cur_layer = tf.nn.relu(func + B_var)
+    elif layer_type == "reshape":
+        shape = layer_info["shape"]
+        cur_layer = tf.reshape(current_parent, shape)
+    elif layer_type == "matmul":
+
+        W_shape = layer_info["W_shape"]
+        W_std   = layer_info["W_std"]
+        W_var = create_W(W_shape,W_std)
+
+        func  = create_matmul(current_parent,W_var)
+
+        try:
+            B_val = layer_info["B_val"]
+            B_shape = layer_info["B_shape"]
+            B_var = create_B(B_val,B_shape)
+        except:
+            raise Exception("Invalid/Missing values for relu bias variable")
+
+        cur_layer = create_matmul(current_parent,W_var) + B_var
+    else:
+        raise Exception(str("Unrecognized layer type (%s)"%(layer_type)))
+    return cur_layer
+
+'''
 '''
 This is the example network used. It was taught to play pong, and does not perform well on snake,
 but it served as a good baseline
