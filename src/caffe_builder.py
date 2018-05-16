@@ -139,21 +139,44 @@ def build_layer(layer_info,layer_dict):
     
     layer["tf_obj"] = build_funcs[layer_type](parent_obj,layer_info)
 
-def build_var(var_type,value):
+def build_var(var_type,value,shape=[1,1,1,1]):
     recognized_types = {}
     recognized_types["constant"]= tf.Constant
     recognized_types["truncated_normal"]  = tf.truncated_normal
+    recognized_types["gaussian"] = recognized_types["truncated_normal"]
+
+    if var_type.lower() == "xavier":
+        Print("Warning, weight filler type \"xavier\" is not supported")
+    if not var_type in recognized_types:
+        raise Exception("Type %s is not a recognized variable type"%(var_type))
     #recognized_types["constant"]=tf.Constant
     #TODO: Figure out how to pass args into the variable generator
-
-    return tf.Variable(recognized_types[var_type](value))
+    if var_type == "gaussian" or var_type == "truncated_normal":
+        return tf.Variable(recognized_types[var_type](value,shape))
+    else:
+        return tf.Variable(recognized_types[var_type](value))
 
 def build_input(parent,layer_info):
     out_shape = layer_info["input_param"]["shape"]["dim"]
     return tf.placeholder("float", out_shape)
 
 def build_convolution(parent,layer_info):
-    params = layer_info["param"]
+    #Assign Default Values
+    #num_output     = 0            #Required input
+    #kernel_size    = [1,5,5,1]    #Required input
+    layer_pad   = "same"
+    stride      = [1,1,1,1]
+    bias_term   = True
+
+    #For weight_filler
+    w_type = "constant"
+    w_val = 0
+
+
+    #Params are currently ignored
+    if "param" in layer_info:
+        params = layer_info["param"]
+        print("Warning: param arg in layer %s is ignored"%(layer_info["name"]))
 
     #convolution parameter handling
     layer_conv_info = layer_info["convolution_param"]
@@ -162,47 +185,66 @@ def build_convolution(parent,layer_info):
 
     num_output = layer_conv_info["num_output"]
     if "kernel_size" in layer_conv_info:
-        kernel_size = layer_conv_info["kernel_size"]
+        kernel_size = layer_conv_info["kernel_size"]["dim"]
     elif "kernel_h" in layer_conv_info:
-        kernel_size = [layer_conv_info["kernel_h"],layer_conv_info["kernel_w"]]
+        kernel_size = [1,layer_conv_info["kernel_h"],layer_conv_info["kernel_w"],1]
     else:
         raise Exception("Layer %s missing required kernel_size arg, "%(layer_info["name"]))
-    
-    if "pad" in layer_conv_info:
-        layer_pad = layer_conv_info["pad"]
-    elif "pad_h" in layer_conv_info:
-        layer_pad = [layer_conv_info["pad_h"],layer_conv_info["pad_w"]]
-
-    if "stride" in layer_conv_info:
-        stride = layer_conv_info["stride"]
-    elif "stride_h" in layer_conv_info:
-        stride = [layer_conv_info["stride_h"],layer_conv_info["stride_w"]]
-
-    if "group" in layer_conv_info:
-        group = layer_conv_info["group"]
+    if not isinstance(stride, list) and len(stride) == 4:
+        raise Exception("Error, invalid value for kernel_size %s in layer for Layer %s"%(str(kernel_size),layer_info["name"]))  
 
     if "weight_filler" in layer_conv_info:
-        w_type = "constant"
-        w_val = 0
         if "type" in layer_conv_info["weight_filler"]:
             w_type = layer_conv_info["weight_filler"]["type"]
         if "value" in layer_conv_info["weight_filler"]:
             w_type = layer_conv_info["weight_filler"]["value"]
 
-    if "bias_filler" in layer_conv_info:
-        b_type = "constant"
-        b_val = 0
-        if "type" in layer_conv_info["bias_filler"]:
-            b_type = layer_conv_info["bias_filler"]["type"]
-        if "value" in layer_conv_info["bias_filler"]:
-            b_type = layer_conv_info["bias_filler"]["value"]
+    if "bias_term" in layer_conv_info:
+        if layer_conv_info["bias_term"].lower() == "true":
+            bias_term = True
+        elif layer_conv_info["bias_term"].lower() == "false":
+            bias_term = False
+        else:
+            raise Exception("Unrecognized value %s for bias_term in Layer %s"%(layer_conv_info["bias_term"],layer_info["name"]))
+
+    if "pad" in layer_conv_info:
+        layer_pad = layer_conv_info["pad"]
+    elif "pad_h" in layer_conv_info:
+        layer_pad = [layer_conv_info["pad_h"],layer_conv_info["pad_w"]]
+    if not str(layer_pad).lower() == "same" and not str(layer_pad).lower() == "valid":
+        raise Exception("Error, Tensorflow only supports \"same\" and \"valid\" padding for Layer %s"%(layer_info["name"]))  
+
+    if "stride" in layer_conv_info:
+        stride = layer_conv_info["stride"]
+    elif "stride_h" in layer_conv_info:
+        stride = [1,layer_conv_info["stride_h"],layer_conv_info["stride_w"],1]
+    if not isinstance(stride, list) and len(stride) == 4:
+        raise Exception("Error, invalid value for stride %s in layer for Layer %s"%(str(stride),layer_info["name"]))  
+
+    if "group" in layer_conv_info:
+        group = layer_conv_info["group"]
+        Print("Warning, group parameter in Layer %s is ignored"%(layer_info["name"]))
             
     #TODO: Generate the nn args properly
+
     W_var = build_var(w_type,w_val)
-    B_var = build_var(b_type,b_val)
-    return tf.nn.conv2d(parent, W_var, strides = stride)
+    if bias_term:
+        B_var = build_var(b_type,b_val)
+    else:
+        B_var = 0
+    Print("Building Convolutional layer with following parameters: " + 
+        str("num_filters %s, kernel_size %s, padding %s, stride %s, use_bias %s"%(
+            num_output,str(kernel_size),str(padding),str(stride),bias_term)))
+    return tf.nn.conv2d(parent, W_var, filters=num_output,kernel_size=kernel_size, 
+        padding=layer_pad.lower(), strides = stride) + B_var
     
 def build_pooling(parent,layer_info):
+
+    #default args
+    #kernel_size = [1,5,5,1] #Required input
+    layer_pad = "same"
+    stride = [1,1,1,1]
+
     valid_pool_types = {}
     valid_pool_types["max"] = tf.nn.max_pool
     valid_pool_types["ave"] = tf.nn.avg_pool
@@ -212,27 +254,39 @@ def build_pooling(parent,layer_info):
     pool = "max"
 
     if "kernel_size" in layer_pool_info:
-        kernel_size = layer_pool_info["kernel_size"]
+        kernel_size = layer_pool_info["kernel_size"]["dim"]
     elif "kernel_h" in layer_pool_info:
-        kernel_size = [layer_pool_info["kernel_h"],layer_pool_info["kernel_w"]]
+        kernel_size = [1,layer_pool_info["kernel_h"],layer_pool_info["kernel_w"]1,]
     else:
         raise Exception("Layer %s missing required kernel_size arg, "%(layer_info["name"]))
 
     if "pad" in layer_pool_info:
         layer_pad = layer_pool_info["pad"]
     elif "pad_h" in layer_pool_info:
-        layer_pad = [layer_pool_info["pad_h"],layer_pool_info["pad_w"]]
+        layer_pad = [1,layer_pool_info["pad_h"],layer_pool_info["pad_w"],1]
+    if not str(layer_pad).lower() == "same" and not str(layer_pad).lower() == "valid":
+        raise Exception("Error, Tensorflow only supports \"same\" and \"valid\" padding for Layer %s"%(layer_info["name"]))  
+    if not isinstance(layer_pad, list) and len(layer_pad) == 4:
+        raise Exception("Error, invalid value for layer_pad %s in layer for Layer %s"%(str(layer_pad),layer_info["name"]))  
+ 
 
     if "stride" in layer_pool_info:
         stride = layer_pool_info["stride"]
     elif "stride_h" in layer_pool_info:
-        stride = [layer_pool_info["stride_h"],layer_pool_info["stride_w"]]
+        stride = [1,layer_pool_info["stride_h"],layer_pool_info["stride_w"],1]
+    if not isinstance(stride, list) and len(stride) == 4:
+        raise Exception("Error, invalid value for stride %s in layer for Layer %s"%(str(stride),layer_info["name"]))  
+
 
     if "pool" in layer_pool_info:
         pool = layer_pool_info["pool"].lower()
 
     if not pool in valid_pool_types:
+        if pool == "stochastic":
+            Print("Stochastic pooling is not supported")
         raise Exception("Unrecognized pool type %s in layer %s"%(layer_info["type"],layer_info["name"]))
+
+
 
     #tf.nn.max_pool(parent, strides = strides,ksize = ksize, padding = "SAME")
     return valid_pool_types[pool](parent,strides=stride,ksize=kernel_size,padding=layer_pad)
