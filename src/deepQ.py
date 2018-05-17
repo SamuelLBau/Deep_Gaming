@@ -26,10 +26,11 @@ import time
 
 class deepQ():
     #[80,80],4,4,
-    def __init__(self,game_env,caffe_file,cost_struct,n_episodes=100,e_init=.5,e_final=.05,gamma=.99,
+    def __init__(self,game_env,caffe_file,cost_struct,num_actions,n_episodes=100,e_init=.5,e_final=.05,gamma=.99,
         n_obs_timesteps=500,n_explore_timesteps=500,n_prev_states=590000,minibatch_size=32,
         frames_per_action=1,game_name="name_unspecified"):
         self.env = game_env
+        self.num_actions = num_actions
         self.n_episodes = n_episodes
         self.e_init = e_init
         self.e_final = e_final
@@ -39,10 +40,11 @@ class deepQ():
         self.n_prev_states = n_prev_states
         self.minibatch_size = minibatch_size
         self.frames_per_action = frames_per_action
+        self.game_name = game_name
         build_success = True
         try:
-            self.network_input,self.network_output,self.network_readout = \
-                CNN = build_CNN(caffe_file=caffe_file)
+            self.game_name,self.network_input,self.network_output,self.network_readout = \
+                build_CNN(caffe_file=caffe_file)
                 #self.build_CNN_old(board_size,n_board_frames,num_actions,CNN_struct,cost_struct)
         except Exception as ex_val:
             error_message = str(ex_val)
@@ -51,8 +53,29 @@ class deepQ():
                     "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=")
             build_success = False
         
+        try:
+            #TODO: Consider creating cost function builder
+            # define the cost function
+            self.actions = tf.placeholder("float", [None, num_actions])
+            self.outputs = tf.placeholder("float", [None])
+            readout_action = tf.reduce_sum(tf.multiply(self.network_readout, self.actions), reduction_indices = 1)
+            cost = tf.reduce_mean(tf.square(self.outputs - readout_action))
+            self.train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
+            print("FINISHED BUILD")
+        except Exception as ex_val:
+            error_message = str(ex_val)
+            print(  "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=\n" + \
+                    "Error during cost function generation: (%s)\n"%(error_message) + \
+                    "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=")
+            build_success = False
+
+
         if build_success:
             print("CNN built succesfully")
+            print("Input shape = %s"%(self.network_input.shape))
+            print("Output shape = %s"%(self.network_output.shape))
+            print("Readout shape = %s"%(self.network_readout.shape))
+
         else:
             raise Exception("Error during CNN generation, see above messages")
     def train(self):
@@ -67,7 +90,9 @@ class deepQ():
         #self.asri_train_network(self.env,s,readout,h_fc1,session)
     def train_CNN(self,env,session,network_input,network_output,network_readout):
         env.reset()
-        single_board_frame_shape = [self.board_size[0],self.board_size[1],1]
+        input_layer_shape = network_input.shape
+        self.n_board_frames = input_layer_shape[3]
+        single_board_frame_shape = [input_layer_shape[1],input_layer_shape[2],1]
         n_board_frames_less_1 = self.n_board_frames-1
 
         prev_frames = deque()
@@ -79,9 +104,12 @@ class deepQ():
 
 
         #TODO: RE-WRITE everything below this point
+        checkpoint_path = str("saved_networks/%s"%(self.game_name))
+        if not os.path.isdir(checkpoint_path):
+            os.mkdir(checkpoint_path)
         checkpoint_saver = tf.train.Saver()
         session.run(tf.initialize_all_variables())
-        checkpoint = tf.train.get_checkpoint_state("saved_networks")
+        checkpoint = tf.train.get_checkpoint_state(checkpoint_path)
         if checkpoint and checkpoint.model_checkpoint_path:
             checkpoint_saver.restore(session, checkpoint.model_checkpoint_path)
             print "Successfully loaded:", checkpoint.model_checkpoint_path
@@ -93,14 +121,19 @@ class deepQ():
         start_time = time.time()
         while True: #Continue learning until program quits
             # choose an action e greedily
-            readout_t = network_readout.eval(feed_dict = {network_input : [cur_state]})[0]
+            readout_t = self.network_readout.eval(feed_dict = {self.network_input : [cur_state]})[0]
             cur_action = np.zeros([self.num_actions])
             action_index = 0
             if random.random() <= e or t <= self.n_obs_timesteps:
                 action_index = random.randrange(self.num_actions)
                 cur_action[action_index] = 1
             else:
+                #print("READOUT",readout_t)
+                #print("SHAPE",readout_t.shape)
                 action_index = np.argmax(readout_t)
+                if(abs(np.max(readout_t)- np.min(readout_t)) < 1):
+                    action_index = random.randrange(self.num_actions)
+                #print("INDEXVAL",action_index)
                 cur_action[action_index] = 1
 
             # scale down epsilon
@@ -148,9 +181,9 @@ class deepQ():
                 num_finished_eps+=1
                 print(num_finished_eps,cur_reward)
                 if num_finished_eps%1000==0:
-                    env.reset(render=True)
+                    env.reset(render=False)
                 else:
-                    env.reset(render=True)
+                    env.reset(render=False)
             
 
             # update the old values
@@ -159,7 +192,7 @@ class deepQ():
 
             # save progress every 10000 iterations
             if t % 10000 == 0:
-                saver.save(sess, 'saved_networks/' + game_name + '-dqn', global_step = 1)
+                checkpoint_saver.save(session, checkpoint_path + "/" + self.game_name + '-dqn', global_step = 1)
 
             # print info
             state = ""
@@ -180,7 +213,8 @@ def call_asri_network_to_CNN_struct():
     return asri_network_to_CNN_struct()
 
 if __name__ == "__main__":
-    env = snake_game()
+    env = snake_game(board_size=[25,25],render=False) #This must match the shape in the supplied prototxt file
+    num_actions = 4
     cost_struct = []
 
     import sys
@@ -191,7 +225,7 @@ if __name__ == "__main__":
         if not os.path.isfile(proto_file):
             raise Exception("Caffe file not found: %s"%(str(e)))
     
-    network = deepQ(env,proto_file,cost_struct,game_name="tetris")
+    network = deepQ(env,proto_file,cost_struct,num_actions,game_name="tetris")
     network.train()
 
 
