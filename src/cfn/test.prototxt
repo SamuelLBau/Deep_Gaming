@@ -5,7 +5,7 @@ layer {
   top: "data"
   input_param { 
     shape: { 
-      dim: -1
+      dim: "None"
       dim: 25
       dim: 25 
       dim: 4 
@@ -28,10 +28,7 @@ layer {
       dim: 1 
     }
     weight_filler {
-      type: "gaussian"
-    }
-    bias_filler {
-      type: "constant"
+      type: "variance_scaling"
     }
   }
 }

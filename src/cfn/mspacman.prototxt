@@ -1,0 +1,109 @@
+name: "PacNet"
+layer {
+  name: "data"
+  type: "Input"
+  top: "data"
+  input_param { 
+    shape: { 
+      dim: "None"
+      dim: 88
+      dim: 80 
+      dim: 1 
+    } 
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "data"
+  top: "conv1"
+  convolution_param {
+    num_output: 32
+    kernel_size: {
+      dim: 8 
+      dim: 8 
+    }
+    stride: {
+      dim: 4 
+      dim: 4 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  convolution_param {
+    num_output: 64
+    kernel_size: {
+      dim: 4 
+      dim: 4 
+    }
+    stride: {
+      dim: 2 
+      dim: 2 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "conv2"
+  top: "conv3"
+  convolution_param {
+    num_output: 64
+    kernel_size: {
+      dim: 3 
+      dim: 3 
+    }
+    stride: {
+      dim: 1 
+      dim: 1 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "reshape1"
+  type: "Reshape"
+  bottom: "conv3"
+  top: "reshape1"
+  shape{
+    dim: -1
+    dim: 7040
+  }
+}
+layer {
+  name: "dense1"
+  type: "Dense"
+  bottom: "reshape1"
+  top: "dense1"
+  dense_param{
+    num_output: 512
+    activation: "relu"
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "output"
+  type: "Dense"
+  bottom: "dense1"
+  top: "dense2"
+  dense_param {
+    num_output: 9
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}

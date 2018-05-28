@@ -69,25 +69,24 @@ class snake_game():
             error_str = "Snake game INVALID ACTION %s"%(str(direction))
             raise RuntimeError(error_str)
         if direction[0] == direction[1] and direction[1] == 0:
-            return [len(self.snake)-1,False]
+            return [self.get_image(),len(self.snake)-1,False]
         next_pos0 = (self.snake[0][0] + direction[0])%self.board_size[0]
         next_pos1 = (self.snake[0][1] + direction[1])%self.board_size[1]
         next_pos = [next_pos0,next_pos1]
-
         #Ignore step if the snake goes "backwards"
         if len(self.snake) == 1 or not self.is_pos_in_list(next_pos,[self.snake[1]]):
             if self.is_pos_in_list(next_pos,self.snake[:-1]):
-                return [len(self.snake)-1,True]
+                return [self.get_image(),len(self.snake)-1,True]
             
             self.snake.insert(0,copy(next_pos)) #Add new head position to list
             if not self.is_pos_in_list(next_pos,[self.food_pos]): #Food wasn't eaten, remove last tail position from snake
                 del self.snake[-1]
+            
             else:
                 #Food was eaten, find a new food spot
                 #TODO: Will have issues when snake gets large, consider keeping list of free values?
                 while self.is_pos_in_list(self.food_pos,self.snake):
                     self.food_pos =  self.get_rand_pos(self.board_size)
-
             if self.render:
                 self.render_snake()
             #TODO:Implement some sort of save functionality
@@ -96,16 +95,16 @@ class snake_game():
             if abs(dist_diff) > 1:
                 dist_diff = 0
             score = len(self.snake)-1 + dist_diff
-            return [score,False]
+            return [self.get_image(),score,False]
         else:
-            return [len(self.snake)-1,False]
+            return [self.get_image(),len(self.snake)-1,False]
 
 #------------------------------------END 'PUBLIC' FUNCTIONS-------------------------------
 #----------------------------------BEGIN 'PRIVATE' FUNCTIONS------------------------------
 
     def is_pos_in_list(self,sublist,cont_list):
         for cont in cont_list:
-            if not cmp(sublist,cont):
+            if sublist == cont:
                 return True
         return False
     def print_snake(self):
