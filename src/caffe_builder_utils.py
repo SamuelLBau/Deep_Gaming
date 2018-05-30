@@ -47,7 +47,9 @@ def build_convolution(parent,layer_info):
     #kernel_size    = [5,5]    #Required input
     layer_pad   = "SAME"
     stride      = [1,1,1,1]
-    bias_term   = True
+    bias_term   = False
+    activation=tf.nn.relu
+    initializer = tf.variance_scaling_initializer()
 
     #For weight_filler
     w_type = "constant"
@@ -107,15 +109,25 @@ def build_convolution(parent,layer_info):
 
 
     if "stride" in layer_conv_info:
-        stride = fix_shape(layer_conv_info["stride"]["dim"])
+        if isinstance(layer_conv_info["stride"]["dim"],list):
+            stride = fix_shape(layer_conv_info["stride"]["dim"])
+        else:
+            stride = layer_conv_info["stride"]["dim"]
     elif "stride_h" in layer_conv_info:
         stride = fix_shape([layer_conv_info["stride_h"],layer_conv_info["stride_w"]])
-    if not isinstance(stride, list) and len(stride) == 4:
-        raise Exception("Error, invalid value for stride %s in layer for Layer %s"%(str(stride),layer_info["name"]))  
+    #if not isinstance(stride, list) and len(stride) == 4:
+    #    raise Exception("Error, invalid value for stride %s in layer for Layer %s"%(str(stride),layer_info["name"]))  
 
     if "group" in layer_conv_info:
         group = layer_conv_info["group"]
         print("Warning, group parameter in Layer %s is ignored"%(layer_info["name"]))
+    if "activation" in layer_conv_info:
+        activation_type = layer_conv_info["activation"].lower()
+        if activation_type == "relu":
+            activation = tf.nn.relu
+        else:
+            raise Exception("Unrecognized activation type %s in layer %s"%(activation_type,layer_info["name"]))
+
             
     #TODO: Generate the nn args properly
     #print("BUILDING W")
@@ -125,13 +137,12 @@ def build_convolution(parent,layer_info):
     #    B_var = build_var(b_type,b_val)
     #else:
     #    B_var = None
-
     print("Building Convolutional layer with following parameters: " + 
         str("num_filters %s, kernel_size %s, padding %s, stride %s, use_bias %s"%(
             num_output,str(kernel_size),str(layer_pad.lower()),str(stride),bias_term)))
 
     return tf.layers.conv2d(parent, filters=num_output,kernel_size=kernel_size, 
-        padding=layer_pad.lower(), strides = stride,use_bias=bias_term,bias_initializer=B_var)
+        padding=layer_pad.upper(), strides = stride,activation=activation,kernel_initializer=initializer)
     
 def build_pooling(parent,layer_info):
 
@@ -240,8 +251,6 @@ def build_dense(parent,layer_info):
     kernel_init = tf.variance_scaling_initializer()
     activation_type = "None"
     
-    print("BUILDING DENSE")
-    print(layer_info)
     if not "dense_param" in layer_info:
         raise Exception("Missing dense_param in layer %s"%(layer_info["name"]))
     
@@ -254,8 +263,7 @@ def build_dense(parent,layer_info):
         activation_type = layer_dense["activation"]
         if activation_type == "relu":
             activation = tf.nn.relu
-    print("DONE BUILDING DENSE")
-    print("Bulding dense layer with num_output = %s, activation = %s and kernel type = %s"%(num_output,activation_type,kernel_init))
+    print("Building dense layer with num_output %d, initializer %s and activation %s"%(num_output,activation,kernel_init))
     if activation is None:
         return tf.layers.dense(parent,num_output,kernel_initializer=kernel_init)
     else:

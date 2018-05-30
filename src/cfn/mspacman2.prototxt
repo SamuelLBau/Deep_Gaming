@@ -1,4 +1,4 @@
-name: "my_dqn"
+name: "PacNet2"
 layer {
   name: "input"
   type: "Input"
@@ -26,6 +26,7 @@ layer {
     }
     stride: {
       dim: 4 
+      dim: 4 
     }
     weight_filler {
       type: "variance_scaling"
@@ -46,6 +47,7 @@ layer {
     }
     stride: {
       dim: 2 
+      dim: 2 
     }
     weight_filler {
       type: "variance_scaling"
@@ -65,7 +67,8 @@ layer {
       dim: 3 
     }
     stride: {
-      dim: 1
+      dim: 1 
+      dim: 1 
     }
     weight_filler {
       type: "variance_scaling"
@@ -99,7 +102,7 @@ layer {
   name: "output"
   type: "Dense"
   bottom: "dense1"
-  top: "dense2"
+  top: "output"
   dense_param {
     num_output: 9
     weight_filler {

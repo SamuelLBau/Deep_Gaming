@@ -13,6 +13,14 @@ from caffe_builder import build_CNN
 import sys
 import time
 
+import matplotlib
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+
+
+##DEBUGGING
+from math import isnan
+
 
 
 #Assumes game_env has the following funtions:
@@ -26,27 +34,40 @@ import time
 
 class deepQ():
     #[80,80],4,4,
-    def __init__(self,game_env,caffe_file,cost_struct,num_actions,n_episodes=100,e_init=.5,e_final=.05,gamma=.99,
-        n_obs_timesteps=500,n_explore_timesteps=500,n_prev_states=590000,minibatch_size=32,
+    def __init__(self,game_env,caffe_file,cost_struct,num_actions,n_episodes=100,e_init=.5,e_final=.05,momentum=.99,
+        learning_rate=.001,n_obs_timesteps=500,n_explore_timesteps=500,n_prev_states=590000,minibatch_size=32,
         frames_per_action=1,game_name="name_unspecified",preprocess_func=None):
         self.env = game_env
         self.num_actions = num_actions
         self.n_episodes = n_episodes
         self.e_init = e_init
         self.e_final = e_final
-        self.gamma = gamma
+        self.momentum = momentum
+        self.learning_rate=learning_rate
         self.n_obs_timesteps = n_obs_timesteps
         self.n_explore_timesteps = n_explore_timesteps
         self.n_prev_states = n_prev_states
         self.minibatch_size = minibatch_size
         self.frames_per_action = frames_per_action
-        self.game_name = game_name
+        self.game_name = game_name.replace(" ","_")
         self.preprocess_func = preprocess_func
         build_success = True
         try:
-            self.game_name,self.network_input,self.network_output,self.network_readout = \
-                build_CNN(caffe_file=caffe_file)
+            
+            self.game_name,self.online_input,self.online_output,self.online_readout,self.online_vars = \
+                build_CNN("q_networks/online",caffe_file=caffe_file)
+            self.game_name,self.target_input,self.target_output,self.target_readout,self.target_vars = \
+                build_CNN("q_networks/target",caffe_file=caffe_file,input = self.online_input)
                 #self.build_CNN_old(board_size,n_board_frames,num_actions,CNN_struct,cost_struct)
+            
+            
+            self.copy_ops = [target_var.assign(self.online_vars[var_name])
+                for var_name, target_var in self.target_vars.items()]
+            
+            self.copy_online_to_target = tf.group(*self.copy_ops)
+            for val in self.online_vars:
+                print(val,self.online_vars[val])
+            print("DONE")
         except Exception as ex_val:
             error_message = str(ex_val)
             print(  "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=\n" + \
@@ -57,12 +78,23 @@ class deepQ():
             try:
                 #TODO: Consider creating cost function builder
                 # define the cost function
-                with tf.variable_scope("train"):
-                    self.actions = tf.placeholder("float", [None, num_actions])
-                    self.outputs = tf.placeholder("float", [None])
-                    readout_action = tf.reduce_sum(tf.multiply(self.network_readout, self.actions), reduction_indices = 1)
-                    cost = tf.reduce_mean(tf.square(self.outputs - readout_action))
-                    self.train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
+                self.n_outputs = self.target_output.shape[1]
+                with tf.variable_scope("train") as scope:
+                    #NOTE: This cost function generation is taken from
+                    #https://github.com/ageron/handson-ml/blob/master/16_reinforcement_learning.ipynb
+                    self.X_action = tf.placeholder(tf.int32, shape=[None])
+                    self.y = tf.placeholder(tf.float32, shape=[None, 1])
+                    q_value = tf.reduce_sum(self.online_output * tf.one_hot(self.X_action, self.n_outputs),
+                                            axis=1, keepdims=True)
+                    error = tf.abs(self.y - q_value)
+                    clipped_error = tf.clip_by_value(error, 0.0, 1.0)
+                    linear_error = 2 * (error - clipped_error)
+                    self.loss = tf.reduce_mean(tf.square(clipped_error) + linear_error)
+
+                    self.global_step = tf.Variable(0, trainable=False, name='global_step')
+                    optimizer = tf.train.MomentumOptimizer(self.learning_rate, self.momentum, use_nesterov=True)
+                    self.training_op = optimizer.minimize(self.loss, global_step=self.global_step)
+
                 print("FINISHED BUILD")
             except Exception as ex_val:
                 error_message = str(ex_val)
@@ -74,150 +106,206 @@ class deepQ():
 
         if build_success:
             print("CNN built succesfully")
-            print("Input shape = %s"%(self.network_input.shape))
-            print("Output shape = %s"%(self.network_output.shape))
-            print("Readout shape = %s"%(self.network_readout.shape))
+            print("Input shape = %s"%(self.online_input.shape))
+            print("Output shape = %s"%(self.online_output.shape))
+            #print("Readout shape = %s"%(self.online_readout.shape))
 
         else:
             raise Exception("Error during CNN generation, see above messages")
-    def train(self):
-        session = tf.InteractiveSession()
-
-        self.train_CNN(self.env,session,self.network_input,
-            self.network_output,self.network_readout)
-        #self.asri_train_network(self.env,self.network_input,self.network_readout,self.network_output,session)
-
-
-        #s, readout, h_fc1=self.asri_create_network()
-        #self.asri_train_network(self.env,s,readout,h_fc1,session)
-    def train_CNN(self,env,session,network_input,network_output,network_readout):
-        env.reset()
-        input_layer_shape = network_input.shape
+    def train(self,run_test=False):
+        self.env.reset()
+        input_layer_shape = self.online_input.shape
         self.n_board_frames = input_layer_shape[3]
         single_board_frame_shape = [input_layer_shape[1],input_layer_shape[2],1]
         n_board_frames_less_1 = self.n_board_frames-1
 
-        prev_frames = deque()
-        cur_frame = env.render(mode="rgb_array")
-        if not self.preprocess_func is None:
-            cur_frame = self.preprocess_func(cur_frame)
-        frame_stack = []
-        for i in range(self.n_board_frames):
-            frame_stack.append(cur_frame)
-        cur_state = np.stack(frame_stack, axis = 2)
+        self.session = tf.InteractiveSession()
+        #writer = tf.summary.FileWriter("./tf_log.log", graph=self.session.graph)
+        init = tf.global_variables_initializer()
+        saver = tf.train.Saver()
+        frames = []
+        n_max_steps = 10000
 
-        if not os.path.isdir("saved_networks"):
-            os.mkdir("saved_networks")
-        #TODO: RE-WRITE everything below this point
-        checkpoint_path = str("saved_networks/%s"%(self.game_name))
-        if not os.path.isdir(checkpoint_path):
-            os.mkdir(checkpoint_path)
-        checkpoint_saver = tf.train.Saver()
-        session.run(tf.initialize_all_variables())
-        checkpoint = tf.train.get_checkpoint_state(checkpoint_path)
-        if checkpoint and checkpoint.model_checkpoint_path:
-            #from tensorflow.python.tools import inspect_checkpoint as chkp
-            #print("HERE")
-            #chkp.print_tensors_in_checkpoint_file(checkpoint_path+str("\%s-1"%(self.game_name)), tensor_name='', all_tensors=True)
-            #print("HERE2")
-            #return
-            checkpoint_saver.restore(session, checkpoint.model_checkpoint_path)
-            print("Successfully loaded:", checkpoint.model_checkpoint_path)
+        n_steps = 8000000  # total number of training steps
+        training_start = 10000  # start training after 10,000 game iterations
+        training_interval = 4  # run a training step every 4 game iterations
+        save_steps = 1000  # save the model every 1,000 training steps
+        copy_steps = 10000  # copy online DQN to target DQN every 10,000 training steps
+        discount_rate = 0.99
+        skip_start = 90  # Skip the start of every game (it's just waiting time).
+        batch_size = 50
+        iteration = 0  # game iterations
+        checkpoint_path = str("./saved_networks/%s/%s.ckpt"%(self.game_name,self.game_name))
+        done = True # env needs to be reset
 
+        loss_val = np.infty
+        game_length = 0
+        total_max_q = 0
+        mean_max_q = 0.0
+
+        if run_test:
+            print("Running test")
+            frames = []
+            n_max_steps = 30000
+            with tf.Session() as sess:
+                saver.restore(sess, checkpoint_path)
+
+                obs = env.reset()
+                for step in range(n_max_steps):
+                    state = self.preprocess_func(obs)
+
+                    # Online DQN evaluates what to do
+                    q_values = self.online_output.eval(feed_dict={self.online_input: [state]})
+                    print(q_values)
+                    action = np.argmax(q_values)
+                    print(action)
+
+                    # Online DQN plays
+                    obs, reward, done, info = env.step(action)
+
+                    img = env.render(mode="rgb_array")
+                    frames.append(img)
+                    if done:
+                        break
+            print("Rendering test")
+
+            def update_scene(num, frames, patch):
+                patch.set_data(frames[num])
+                return patch,
+            def plot_animation(frames, repeat=False, interval=40):
+                plt.close()  # or else nbagg sometimes plots in the previous cell
+                fig = plt.figure()
+                patch = plt.imshow(frames[-1])
+                plt.axis('off')
+                return animation.FuncAnimation(fig, update_scene, fargs=(frames, patch), frames=len(frames), repeat=repeat, interval=interval)
+            plot_animation(frames)
+            plt.show()
+            return
+        prev_frames = deque(maxlen=self.n_prev_states)
+
+        eps_min = 0.1
+        eps_max = 1.0
+        eps_decay_steps = 2000000
+
+        def epsilon_greedy(q_values, step_in):
+            epsilon = max(eps_min, eps_max - (eps_max-eps_min) * step_in/eps_decay_steps)
+            if np.random.rand() < epsilon:
+                return np.random.randint(self.n_outputs) # random action
+            else:
+                return np.argmax(q_values) # optimal action
+
+        if os.path.isfile(checkpoint_path + ".index"):
+            saver.restore(self.session, checkpoint_path)
+            self.copy_online_to_target.run()
         else:
-            print("Could not find old network weights")
-        e = self.e_init
-        t = 0
-        num_finished_eps=0
+            init.run()
+            self.copy_online_to_target.run()
+
         start_time = time.time()
-        while True: #Continue learning until program quits
-            # choose an action e greedily
-            readout_t = self.network_readout.eval(feed_dict = {self.network_input : [cur_state]})[0]
-            cur_action = np.zeros([self.num_actions])
-            action_index = 0
-            if random.random() <= e or t <= self.n_obs_timesteps:
-                action_index = random.randrange(self.num_actions)
-                cur_action[action_index] = 1
-            else:
-                #print("READOUT",readout_t)
-                #print("SHAPE",readout_t.shape)
-                action_index = np.argmax(readout_t)
-                if(abs(np.max(readout_t)- np.min(readout_t)) < 1):
-                    action_index = random.randrange(self.num_actions)
-                #print("INDEXVAL",action_index)
-                cur_action[action_index] = 1
+        while True:
+            step = self.global_step.eval()
+            if step >= n_steps:
+                break
+            iteration += 1
+            tot_time = time.time()-start_time
+            print("                                                                   \r"+"Iteration {}\tTraining step {}/{} ({:.1f})%\tLoss {:5f}\tMean Max-Q {:2f}  ".format(
+                iteration, step, n_steps, step * 100 / n_steps, loss_val, mean_max_q), end="")
+            start_time = time.time()
+            if done: # game over, start again
+                obs = self.env.reset()
+                for skip in range(skip_start): # skip the start of each game
+                    obs, reward, done, info = self.env.step(0)
+                state = preprocess_func(obs)
 
-            # scale down epsilon
-            if e > self.e_final and t > self.n_obs_timesteps:
-                e -= (self.e_init - self.e_final) / self.n_explore_timesteps
+            # Online DQN evaluates what to do
+            #print("\nINPUT SHAPE",self.online_input.shape)
+            #print("PROCESS_SHAPE",state.shape)
+            q_values = self.online_output.eval(feed_dict={self.online_input: [state]})
+            #print("q_VALUES",q_values)
+            action = epsilon_greedy(q_values, step)
+            #if np.min(q_values) < .00001:
+            #    print("QS")
+            #    print(q_values)
+            #    print(np.min(state))
+            #    print(np.max(state))
+            #    return
 
-            for i in range(0, self.frames_per_action):
-                # run the selected action and observe next state and reward
-                next_frame,cur_reward, terminal, info = env.step(action_index)
-                next_frame = self.preprocess_func(next_frame)
-                next_frame = np.reshape(next_frame, single_board_frame_shape)
-                if self.n_board_frames > 1:
-                    next_state = np.append(next_frame, cur_state[:,:,0:n_board_frames_less_1], axis = 2)
-                else:
-                    next_state = next_frame
-                # store the transition in prev_frames
-                prev_frames.append((cur_state, cur_action, cur_reward, next_state, terminal))
-                if len(prev_frames) > self.n_prev_states:
-                    prev_frames.popleft()
-            # only train if done observing
-            if t > self.n_obs_timesteps:
-                # sample a minibatch to train on
-                minibatch = random.sample(prev_frames, self.minibatch_size)
-                # get the batch variables
-                s_j_batch = [d[0] for d in minibatch]
-                action_batch = [d[1] for d in minibatch]
-                reward_batch = [d[2] for d in minibatch]
-                s_j1_batch = [d[3] for d in minibatch]
+            # Online DQN plays
+            obs, reward, done, info = self.env.step(action)
+            next_state = preprocess_func(obs)
+            # Let's memorize what happened
+            prev_frames.append((state, action, reward, next_state, 1.0 - done))
+            state = next_state
 
-                output_batch = []
-                readout_j1_batch = network_readout.eval(feed_dict = {network_input : s_j1_batch})
-                for i in range(0, len(minibatch)):
-                    # if terminal only equals reward
-                    #print(minibatch)
-                    if minibatch[i][4]:
-                        output_batch.append(reward_batch[i])
-                    else:
-                        output_batch.append(reward_batch[i] + self.gamma * np.max(readout_j1_batch[i]))
+            # Compute statistics for tracking progress (not shown in the book)
+            total_max_q += q_values.max()
+            game_length += 1
+            if done:
+                mean_max_q = total_max_q / game_length
+                total_max_q = 0.0
+                game_length = 0
 
-                # perform gradient step
-                self.train_step.run(feed_dict = {
-                    self.outputs : output_batch,
-                    self.actions: action_batch,
-                    network_input : s_j_batch})
-            if terminal:
-                num_finished_eps+=1
-                print(num_finished_eps,cur_reward)
-                env.render(mode="rgb_array")
-                env.reset()
+            if (self.global_step.eval() < training_start and iteration < training_start) or iteration % training_interval != 0:
+                continue # only train after warmup period and at regular intervals
             
+            # Sample memories and use the target DQN to produce the target Q-Value
+            #X_state_val, X_action_val, rewards, X_next_state_val, continues = (
+            #    sample_memories(batch_size))\
 
-            # update the old values
-            cur_state = next_state
-            t += 1
+            X_state_val, X_action_val, rewards, X_next_state_val, continues = \
+                random.sample(prev_frames, 1)[0]
+            print("REWARDS", X_action_val,rewards,continues,len(prev_frames))
+            next_q_values = self.target_output.eval(
+                feed_dict={self.target_input: [X_next_state_val]})
+            max_next_q_values = np.max(next_q_values, axis=1)
+            y_val = rewards + continues * discount_rate * max_next_q_values
+            #y_val = y_val[0]
+            #for i in range(5):
+            #    print("HERE2")
+            # Train the online DQN
+            #print("VALS")
+            #print(rewards)
+            #print(continues)
+            #print("VALS2")
+            #print(X_action_val)
+            #print(y_val)
+            #print(q_values)
+            #print("NEXT")
+            #print(next_q_values)
+            #print(X_action_val)
+            #print(max_next_q_values)
 
-            # save progress every 10000 iterations
-            if t % 2000 == 0:
-                checkpoint_saver.save(session, checkpoint_path + "/" + self.game_name, global_step = 1)
-            # print info
-            state = ""
-            if t <= self.n_obs_timesteps:
-                state = "observe"
-            elif t > self.n_obs_timesteps and t <= self.n_obs_timesteps + self.n_explore_timesteps:
-                state = "explore"
-            else:
-                state = "train"
-            if t % 500 == 0:
-                end_time=time.time()
-                steps_per_second = 500.0 / (end_time-start_time)
-                print("TIMESTEP", t, "/ Steps/s", steps_per_second, "/ EPSILON", e, "/ ACTION", action_index, "/ REWARD", cur_reward, "/ Q_MAX %e" % np.max(readout_t))
-                start_time = time.time()
-        pass
+            _, loss_val = self.session.run([self.training_op, self.loss], feed_dict={
+                self.online_input: np.expand_dims(X_state_val,0), self.X_action: np.array([X_action_val]), self.y: np.array([y_val])})
+            #print("VALS")
+            #print(rewards)
+            #print(continues)
+            print("VALS2")
+            print(X_action_val)
+            print(y_val)
+            print(q_values)
+            print(loss_val)
+            #print("NEXT")
+            #print(next_q_values)
+            #print(X_action_val)
+            #print(max_next_q_values)
+            
+            if isnan(loss_val) or loss_val > 8e8:
+                print(loss_val)
+                print(np.expand_dims(X_state_val,0).shape)
+                print(X_action_val)
+                print(y_val)
+                if isnan(loss_val):
+                    print("LOSS NAN")
+                    return
+            # Regularly copy the online DQN to the target DQN
+            if step % copy_steps == 0:
+                self.copy_online_to_target.run()
 
+            # And save regularly
+            if step % save_steps == 0:
+                saver.save(self.session, checkpoint_path)
+        
 if __name__ == "__main__":
     env = None
     import sys
@@ -247,12 +335,14 @@ if __name__ == "__main__":
                     img = img.sum(axis=2) # to greyscale
                     img[img==mspacman_c] = 0 # Improve contrast
                     img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-                    return img.reshape(88, 80)
-            
+                    return img.reshape(88, 80,1)
             
             env = gym.make(game_type)
             num_actions = 9     
     cost_struct = []
+    test=False
+    if len(sys.argv) > 3:
+        test = int(sys.argv[3])>0
 
     network = deepQ(env,proto_file,cost_struct,num_actions,game_name=game_type,preprocess_func=preprocess_func)
-    network.train()
+    network.train(run_test=test)

@@ -33,7 +33,6 @@ def segment_prototxt(lines,lineid,struct):
                 val = val.replace("\"","").replace("\'","")
                 pass
         
-        print("key",key,val)
         if key in struct:
             if isinstance(struct[key],list):
                 struct[key].append(val)
@@ -82,7 +81,7 @@ def parse_prototxt(filepath):
     #print(print_dict(CNN_struct,""))
     return CNN_struct
 
-def build_CNN(caffe_file=None,CNN_struct = None):
+def build_CNN(name,caffe_file=None,CNN_struct = None,input=None):
     #This will build the tensorflow implementation of the specified network
 
     if not CNN_struct is None:
@@ -99,48 +98,32 @@ def build_CNN(caffe_file=None,CNN_struct = None):
         CNN_name = CNN_struct["name"]
     else:
         CNN_name = "name_unspecified"
-    online_layer_dict = OrderedDict()
-    with tf.variable_scope("q_networks/online") as scope:
+    layer_dict = OrderedDict()
+    with tf.variable_scope(name) as scope:
         for n,layer_info in enumerate(CNN_struct["layer"]):
             try:
-                build_layer(layer_info,online_layer_dict)
+                build_layer(layer_info,layer_dict,input=input)
             except Exception as e:
                 raise Exception("Error during layer %d creation: %s"%(n+1,str(e)))
-        online_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+        vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                        scope=scope.name)
-        online_vars = {var.name[len(scope.name):]: var
-                                  for var in online_vars}
-    print(online_vars)
-    target_layer_dict = OrderedDict()
-    with tf.variable_scope("q_networks/target") as scope:
-        for n,layer_info in enumerate(CNN_struct["layer"]):
-            try:
-                build_layer(layer_info,target_layer_dict)
-            except Exception as e:
-                raise Exception("Error during layer %d creation: %s"%(n+1,str(e)))
-        target_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                       scope=scope.name)
-        target_vars = {var.name[len(scope.name):]: var
-                                  for var in target_vars}
-    print(target_vars)
-    copy_ops = [target_var.assign(online_vars[var_name])
-            for var_name, target_var in target_vars.items()]
-    copy_online_to_target = tf.group(*copy_ops)
-    if "input" in online_layer_dict:
-        input_layer = online_layer_dict["input"]["tf_obj"]
+        vars = {var.name[len(scope.name):]: var
+                                  for var in vars}
+    if "input" in layer_dict:
+        input_layer = layer_dict["input"]["tf_obj"]
     else:
-        input_layer   = list(online_layer_dict.items())[0][1]["tf_obj"]
-    if "output" in online_layer_dict:
-        input_layer = online_layer_dict["output"]["tf_obj"]
+        input_layer   = list(layer_dict.items())[0][1]["tf_obj"]
+    if "output" in layer_dict:
+        output_layer = layer_dict["output"]["tf_obj"]
     else:
-        output_layer  = list(online_layer_dict.items())[-1][1]["tf_obj"]
-    if "readout" in online_layer_dict:
-        readout_layer = online_layer_dict["readout"]["tf_obj"]
+        output_layer  = list(layer_dict.items())[-1][1]["tf_obj"]
+    if "readout" in layer_dict:
+        readout_layer = layer_dict["readout"]["tf_obj"]
     else:
-        readout_layer = list(online_layer_dict.items())[-1][1]["tf_obj"]
-    return CNN_name,input_layer,output_layer,readout_layer
+        readout_layer = list(layer_dict.items())[-1][1]["tf_obj"]
+    return CNN_name,input_layer,output_layer,readout_layer,vars
 
-def build_layer(layer_info,layer_dict):
+def build_layer(layer_info,layer_dict,input=None):
     '''
         layer_info: is a dictionary object that contains the .prototxt style information
         layer_dict: is a dictionary object that contains all existing layers, keyed by the layer "top"
@@ -172,6 +155,9 @@ def build_layer(layer_info,layer_dict):
         layer["bottom"] = layer_bottom
         parent_obj      = layer_dict[layer_bottom]
         parent_layer = parent_obj["tf_obj"]
+        #This is specific to mspacman
+        if layer_bottom.lower() == "input":
+            parent_layer = parent_obj["tf_obj"]/128.0
         
     layer["name"] = layer_name
     layer["type"] = layer_type
@@ -180,4 +166,7 @@ def build_layer(layer_info,layer_dict):
     #This will handle each of the different layer types
     if not layer_type in build_funcs:
         raise Exception("Unrecognized layer type %s and name %s"%(layer_info["type"],layer_name))
-    layer["tf_obj"] = build_funcs[layer_type](parent_layer,layer_info)
+    if layer_type.lower() == "input" and not input is None:
+        layer["tf_obj"] = input
+    else:
+        layer["tf_obj"] = build_funcs[layer_type](parent_layer,layer_info)
