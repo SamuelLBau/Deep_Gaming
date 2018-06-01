@@ -99,7 +99,7 @@ layer {
   name: "output"
   type: "Dense"
   bottom: "dense1"
-  top: "dense2"
+  top: "output"
   dense_param {
     num_output: 9
     weight_filler {
