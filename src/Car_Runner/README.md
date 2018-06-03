@@ -8,9 +8,13 @@ Checkpoints can be found under the data folder. checkpoint_Orig corresponds to t
 
 The current code allows training from scratch or loading in an existing checkpoint. Continuing from a checkpoint allows the agent to run or continue to be trained.
 
+run carRacingV0_main.py in its currents state to load current checkpoint and start playing.
+
 Requirements:
 - Python 3.5
 - OpenAI Gym (with Box2D)
 - Tensorflow
 - numpy
 - scikit-image
+
+Note: Sometimes I get a "Library 'GL' not found" error, a reboot usually fixes that.
