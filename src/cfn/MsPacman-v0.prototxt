@@ -1,4 +1,4 @@
-name: "PacNet2"
+name: "PacNet"
 layer {
   name: "input"
   type: "Input"

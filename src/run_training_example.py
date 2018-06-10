@@ -51,7 +51,7 @@ def configure_training_1():
 
     args["game_type"] = "MsPacman-v0"
     args["env"] = gym.make(args["game_type"])
-    args["proto"] = "cfn/MsPacman-v0_history.prototxt"
+    args["proto"] = "cfn/MsPacman-v0.prototxt"
     args["action_space"] = list(range(9))
     args["preprocess_func"] = mspacman_preprocess_func
     args["n_episodes"]=4000000

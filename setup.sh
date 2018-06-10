@@ -8,4 +8,4 @@ pip install gym
 pip install cmake
 pip install gym[atari]
 conda install -c https://conda.anaconda.org/kne pybox2d
-echo "Please run <source activate ${virtal_env}>"
+echo "Please run <source activate ${virtual_env}>"
