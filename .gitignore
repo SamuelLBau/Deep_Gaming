@@ -1,3 +1,8 @@
+#Custom ignores
+
+src/saved_networks/
+!src/saved_networks/PacNet3*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

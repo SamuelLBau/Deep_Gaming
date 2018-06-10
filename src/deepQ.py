@@ -49,6 +49,9 @@ class deepQ():
         learning_interval=1,minibatch_size=50,
         save_rewards=False,fresh=False,render=False,max_neg_reward_steps=1e9):
         
+        tf.logging.set_verbosity(tf.logging.ERROR)
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
         self.game_type = game_type
         self.env = env
         self.proto = proto
@@ -353,13 +356,15 @@ class deepQ():
             self.saver.restore(sess, self.checkpoint_path)
 
             obs = self.env.reset()
+            neg_reward_step_count=0
             for step in range(n_max_steps):
                 state = self.preprocess_func(obs)
                 # Online DQN evaluates what to do
                 q_values = self.online_output.eval(feed_dict={self.online_input: [state]})
                 #print(q_values)
                 action = np.argmax(q_values)
-                print(self.action_space[action])
+                #print(q_values)
+                #print(self.action_space[action])
                 #print(action)
                 #print(step)
                 y_val = [np.max(q_values)]
@@ -372,6 +377,16 @@ class deepQ():
                 frames.append(img)
                 if done:
                     break
+
+                if reward <=0.0:
+                    neg_reward_step_count += 1
+                    if neg_reward_step_count >= self.max_neg_reward_steps:
+                        done = True
+                        neg_reward_step_count = 0
+                else:
+                    neg_reward_step_count = 0
+
+
         print("Rendering test")
 
         def update_scene(num, frames, patch):

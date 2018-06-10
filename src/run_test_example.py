@@ -1,9 +1,12 @@
+import argparse
 import gym
 import numpy as np
 
 import matplotlib
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+
+from deepQ import deepQ
 
 
 #These are used for image pre-processing
@@ -16,12 +19,14 @@ def run_tests(args,gif_path,num_tests=10):
     max_anim = None
     max_score = -1e9
     for i in range(num_tests):
-        print("Running test %d of %d"%(i+1,num_tests)
-        anim,score = network.run_test()
+        print("Running test %d of %d"%(i+1,num_tests))
+        [anim, score] = network.run_test()
         if score > max_score:
             max_anim = anim
             max_score = score
     network.play_test(max_anim,gif_path)
+
+    del network
 
 
 def mspacman_preprocess_func(frame):
@@ -51,10 +56,10 @@ def carracing_preprocess_func(frame):
 def configure_test_1():
     args = {}
     args["game_type"] = "MsPacman-v0"
-    args["test"] = True
     args["env"] = gym.make(args["game_type"])
-    args["proto"] = "cfn/mspacman2.prototxt"
-    args["action_space"] = list(range(4))
+    args["proto"] = "cfn/MsPacman-v0_history.prototxt"
+    args["action_space"] = list(range(9))
+    #print(args["action_space"])
     args["preprocess_func"] = mspacman_preprocess_func
     #args["n_episodes"]=4000000
     #args["game_skip"] = 80
@@ -67,9 +72,8 @@ def configure_test_1():
 def configure_test_2():
     args = {}
     args["game_type"] = "CarRacing-v0"
-    args["test"] = True
     args["env"] = gym.make(args["game_type"])
-    args["proto"] = "cfn/car_racing0.prototxt"
+    args["proto"] = "cfn/CarRacing-v0.prototxt"
     args["preprocess_func"] = carracing_preprocess_func
     
     #Discretize the action space
@@ -98,16 +102,24 @@ def configure_test_2():
 
 if __name__ == "__main__":
     
-    print("Running MsPacman test")
-    args = configure_test_1()
-    run_tests(args,"Mspacman_Example.gif",num_tests=10)
-    
-    print("Running CarRacing test")
-    try:
-        args = configure_test_2()
-        run_tests(args,"CarRacing_Example.gif",num_tests=10)
-    except Exception as e:
-        print("Failed to run CarRacing example,",str(e))
+    parser = argparse.ArgumentParser(description='Run a convolutional neural net on an openAI gym environment.')
+    parser.add_argument("--env",type=str,help="Select a prototxt file to load up",required=False,default="MsPacman-v0")
+    args = parser.parse_args()
+    env = args.env
+
+    if env == "MsPacman-v0":
+        print("Running MsPacman test")
+        args = configure_test_1()
+        run_tests(args,"Mspacman_Example.gif",num_tests=1)
+    elif env == "CarRacing-v0":
+        print("Running CarRacing test")
+        try:
+            args = configure_test_2()
+            run_tests(args,"CarRacing_Example.gif",num_tests=1)
+        except Exception as e:
+            print("Failed to run CarRacing example,",str(e))
+    else:
+        print("Unsupported test environment %s"%(env))
 
 
 
