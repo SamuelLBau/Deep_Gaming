@@ -192,16 +192,16 @@ class deepQ():
     def train(self):
         self.env.reset()
        
-
+        run_string = "%s_%s"%(self.game_type,self.network_name)
         #writer = tf.summary.FileWriter("./tf_log.log", graph=self.session.graph)
         if not os.path.isdir("./saved_networks"):
             os.mkdir("./saved_networks")
-        if not os.path.isdir(str("./saved_networks/%s_%s"%(self.game_type,self.network_name))):
-            os.mkdir(str("./saved_networks/%s_%s"%(self.game_type,self.network_name)))
-        reward_data_path = str("./saved_networks/%s_%s/%s_%s.rewards"%(self.game_type,self.network_name,self.game_type,self.network_name))
-        max_q_path = str("./saved_networks/%s_%s/%s_%s.qs"%(self.game_type,self.network_name,self.game_type,self.network_name))
+        if not os.path.isdir(str("./saved_networks/%s"%(run_string))):
+            os.mkdir(str("./saved_networks/%s"%(run_string)))
+        reward_data_path = str("./saved_networks/%s/%s.rewards"%(run_string,run_string))
+        max_q_path = str("./saved_networks/%s/%s.qs"%(run_string,run_string))
 
-        cmd_file_path = str("./saved_networks/%s_%s/%s_%s.cmd"%(self.game_type,self.network_name,self.game_type,self.network_name))
+        cmd_file_path = str("./saved_networks/%s/%s.cmd"%(run_string,run_string))
         self.write_settings(cmd_file_path)
 
 
@@ -340,7 +340,7 @@ class deepQ():
                 #print(np.argmax(q_values))
 
             print_str = "                                                                                       \r"
-            print_str += "Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\taction %2d"%(cur_step,self.n_episodes,1.0*cur_step/self.n_episodes,total_reward,avg_reward,action)
+            print_str += "%s: Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\taction %2d"%(run_string,cur_step,self.n_episodes,1.0*cur_step/self.n_episodes,total_reward,avg_reward,action)
             sys.stdout.write(print_str)
             sys.stdout.flush()
     
