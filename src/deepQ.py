@@ -46,11 +46,12 @@ class deepQ():
         momentum=.95,learning_rate=.001,discount=.99,
         epsilon_min=.1,epsilon_max=1.0,epsilon_steps=2000000,
         n_prev_states=100000,checkpoint_interval=500,target_update_interval=5000,
-        learning_interval=1,frames_per_action=1,minibatch_size=50,
+        learning_interval=1,minibatch_size=50,
         save_rewards=False,fresh=False,render=False,max_neg_reward_steps=1e9):
         
         self.game_type = game_type
         self.env = env
+        self.proto = proto
         self.action_space = action_space
         self.num_actions = len(action_space)
         self.preprocess_func = preprocess_func
@@ -67,7 +68,6 @@ class deepQ():
         self.target_update_interval = target_update_interval
         
         self.learning_interval = learning_interval
-        self.frames_per_action = frames_per_action
         self.minibatch_size = minibatch_size
 
         self.epsilon_min=epsilon_min
@@ -104,22 +104,31 @@ class deepQ():
         
         try:
             #TODO: Consider creating loss function builder
-            # define the loss function
             self.n_outputs = self.target_output.shape[1]
-            with tf.variable_scope("train") as scope:
-                self.X_action = tf.placeholder(tf.int32, shape=[None])
-                self.y = tf.placeholder(tf.float32, shape=[None, 1])
-                q_value_t = tf.reduce_sum(self.online_output * tf.one_hot(self.X_action, self.n_outputs),
-                                        axis=1, keepdims=True)
-                error = tf.abs(self.y - q_value_t)
-                clipped_error = tf.clip_by_value(error, 0.0, 1.0)
-                linear_error = 2 * (error - clipped_error)
-                self.loss = tf.reduce_mean(tf.square(clipped_error) + linear_error)
 
-                self.global_step = tf.Variable(0, trainable=False, name='global_step')
-                optimizer = tf.train.MomentumOptimizer(self.learning_rate, self.momentum, use_nesterov=True)
-                self.training_op = optimizer.minimize(self.loss, global_step=self.global_step)
-            self.init = tf.global_variables_initializer()
+            #Select optimizer type
+            optimizer = tf.train.MomentumOptimizer(self.learning_rate, self.momentum, use_nesterov=True)
+
+            with tf.variable_scope("train") as scope:
+                self.action = tf.placeholder(tf.int32, shape=[None])
+                self.sampled_vals = tf.placeholder(tf.float32, shape=[None, 1])
+                selected_qs = self.online_output * tf.one_hot(self.action, self.n_outputs)
+
+                q_values = tf.reduce_sum(selected_qs,keepdims=True,axis=1)
+                error = tf.abs(self.sampled_vals - q_values)
+
+                less_1_error = tf.square(error)
+                more_1_error = 2 * error - 1
+
+                #If error is < 1, square the error
+                #If error > 1 double the error - 1
+                correct_err = tf.minimum(less_1_error,more_1_error)
+                self.loss = tf.reduce_mean(correct_err)
+
+                self.training_step = tf.Variable(0, trainable=False, name='global_step')
+                self.training_op = optimizer.minimize(self.loss, global_step=self.training_step)
+
+            self.initializer = tf.global_variables_initializer()
             self.saver = tf.train.Saver()
         except Exception as ex_val:
             error_message = str(ex_val)
@@ -133,6 +142,38 @@ class deepQ():
         print("Output shape = %s"%(self.online_output.shape))
         #print("Readout shape = %s"%(self.online_readout.shape))
 
+    def write_settings(self,file_path):
+        with open(file_path,"w") as file:
+            file.write("python deepQ.py ")
+            file.write(str("--env %s "%(self.game_type)))
+            file.write(str("--proto %s "%(self.proto)))
+
+            file.write(str("--game_skip %d "%(self.game_skip)))
+            file.write(str("--n_episodes %d "%(self.n_episodes)))
+
+            file.write(str("--momentum %f "%(self.momentum)))
+            file.write(str("--learning_rate %f "%(self.learning_rate)))
+            file.write(str("--discount %f "%(self.discount)))
+
+            print(self.epsilon_min,type(self.epsilon_min))
+            file.write(str("--epsilon_min %f "%(self.epsilon_min)))
+            file.write(str("--epsilon_max %f "%(self.epsilon_max)))
+            file.write(str("--epsilon_steps %d "%(self.epsilon_steps)))
+
+            file.write(str("--n_prev_states %d "%(self.n_prev_states)))
+
+            file.write(str("--checkpoint_interval %d "%(self.checkpoint_interval)))
+            file.write(str("--target_update_interval %d "%(self.target_update_interval)))
+            file.write(str("--learning_interval %d "%(self.learning_interval)))
+
+            file.write(str("--minibatch_size %d "%(self.minibatch_size)))
+            file.write(str("--max_neg_reward_steps %d "%(self.max_neg_reward_steps)))
+            if self.save_rewards:
+                file.write("--save_rewards ")
+
+
+
+
     def select_action(self,q_values,step_num):
         e = max(self.epsilon_min, self.epsilon_max - (self.epsilon_max-self.epsilon_min) * float(step_num)/self.epsilon_steps)
         if np.random.rand() < e:
@@ -140,6 +181,14 @@ class deepQ():
         else:
             return np.argmax(q_values) # optimal action
     
+    
+    def reset_env(self):
+        obs = self.env.reset()
+        for skip in range(self.game_skip): # skip the start of each game
+            obs, reward, done, info = self.env.step(self.action_space[0])
+            if self.render:
+                self.env.render()
+        return self.preprocess_func(obs)
     def train(self):
         self.env.reset()
        
@@ -152,6 +201,10 @@ class deepQ():
         reward_data_path = str("./saved_networks/%s_%s/%s_%s.rewards"%(self.game_type,self.network_name,self.game_type,self.network_name))
         max_q_path = str("./saved_networks/%s_%s/%s_%s.qs"%(self.game_type,self.network_name,self.game_type,self.network_name))
 
+        cmd_file_path = str("./saved_networks/%s_%s/%s_%s.cmd"%(self.game_type,self.network_name,self.game_type,self.network_name))
+        self.write_settings(cmd_file_path)
+
+
         prev_frames = deque(maxlen=self.n_prev_states)
 
         self.session = tf.InteractiveSession()
@@ -159,22 +212,22 @@ class deepQ():
             self.saver.restore(self.session, self.checkpoint_path)
             #self.copy_online_to_target.run()
         else:
-            self.init.run()
+            self.initializer.run()
             self.copy_online_to_target.run()
         if self.save_rewards:
-            if (self.global_step.eval() == 0 and os.path.isfile(reward_data_path)) or self.fresh:
+            if (self.training_step.eval() == 0 and os.path.isfile(reward_data_path)) or self.fresh:
                 reward_file = open(reward_data_path,"wb")
             else:
                 reward_file = open(reward_data_path,"ab")
-            if (self.global_step.eval() == 0 and os.path.isfile(max_q_path)) or self.fresh:
+            if (self.training_step.eval() == 0 and os.path.isfile(max_q_path)) or self.fresh:
                 q_file = open(max_q_path,"wb")
             else:
                 q_file = open(max_q_path,"ab")
         #start_time = time.time()
         
-        done = False # env needs to be reset
 
         loss = float("inf")
+        done = False
         game_length = 0
         total_reward = 0
         total_max_q = 0
@@ -182,9 +235,10 @@ class deepQ():
         avg_reward_list = []
         avg_reward = 0
         neg_reward_step_count = 0
-        iteration = 0  # game iterations
-        for skip in range(self.game_skip): # skip the start of each game
-            obs, reward, done, info = self.env.step(self.action_space[0])
+        cur_iter = 0  # game iterations
+        self.reset_env()
+
+        #This pre-loads frames into the memory
         for i in range(self.minibatch_size+1):
             obs, reward, done, info = self.env.step(self.action_space[0])
             next_state = self.preprocess_func(obs)
@@ -193,19 +247,9 @@ class deepQ():
             prev_frames.append((state, 0, reward, next_state, 1.0 - done))
             state = next_state
         action=0
-        while True:
-            step = self.global_step.eval()
-            
-            if step >= self.n_episodes:
-                break
-            iteration += 1
-            if done: # game over, start again
-                obs = self.env.reset()
-                for skip in range(self.game_skip): # skip the start of each game
-                    obs, reward, done, info = self.env.step(self.action_space[0])
-                    if self.render:
-                        self.env.render()
-                state = self.preprocess_func(obs)
+        while self.training_step.eval() < self.n_episodes:
+            cur_step = self.training_step.eval()
+            cur_iter += 1
 
             #if iteration%100 == 0:
             #    plt.imshow(obs)
@@ -218,13 +262,7 @@ class deepQ():
             q_values = self.online_output.eval(feed_dict={self.online_input: np.array([state])})
             #temp_q_values = self.truth_output.eval(feed_dict={self.truth_input: np.array([state])})
             #print("q_VALUES",q_values)
-            action = self.select_action(q_values, step)
-            #if np.min(q_values) < .00001:
-            #    print("QS")
-            #    print(q_values)
-            #    print(np.min(state))
-            #    print(np.max(state))
-            #    return
+            action = self.select_action(q_values, cur_step)
 
             # Online DQN plays
             obs, reward, done, info = self.env.step(self.action_space[action])
@@ -249,6 +287,7 @@ class deepQ():
             else:
                 neg_reward_step_count = 0
 
+            #Update score / q files, reset environment
             if done:
                 if self.save_rewards:
                     reward_file.write(int(total_reward).to_bytes(4, byteorder='little', signed=True))
@@ -266,38 +305,42 @@ class deepQ():
                 total_max_q = 0.0
                 game_length = 0
                 total_reward = 0
+                self.reset_env()
 
-            if iteration % self.learning_interval != 0:
-                continue # only train after warmup period and at regular intervals
+
+            if cur_iter % self.learning_interval != 0:
+                continue #Optionally skip certain frames
             
             samples = random.sample(prev_frames, min(len(prev_frames),self.minibatch_size))
             
-            X_state_val =       np.array([samp[0] for samp in samples])
-            X_action_val =      np.array([samp[1] for samp in samples])
-            rewards =           np.array([samp[2] for samp in samples])
-            X_next_state_val =  np.array([samp[3] for samp in samples])
-            continues =         np.array([samp[4] for samp in samples])
+            sampled_state_vals =       np.array([samp[0] for samp in samples])
+            sampled_action_vals =      np.array([samp[1] for samp in samples])
+            sampled_rewards =          np.array([samp[2] for samp in samples])
+            sampled_next_state_vals =  np.array([samp[3] for samp in samples])
+            sampled_continues =        np.array([samp[4] for samp in samples])
 
-            next_q_values = self.target_output.eval(
-                feed_dict={self.target_input: X_next_state_val})
-            max_next_q_values = np.max(next_q_values, axis=1)
-            y_val =np.expand_dims(rewards + continues * self.discount * max_next_q_values,1)
+            next_qs = self.target_output.eval(
+                feed_dict={self.target_input: sampled_next_state_vals})
+            max_next_qs = np.max(next_qs, axis=1)
+
+            sampled_vals =np.expand_dims(sampled_rewards + sampled_continues * \
+                self.discount * max_next_qs,1)
 
             GARBAGE, loss = self.session.run([self.training_op, self.loss], feed_dict={
-                self.online_input: X_state_val, self.X_action: X_action_val, self.y: y_val})
+                self.online_input: sampled_state_vals, self.action: sampled_action_vals, self.sampled_vals: sampled_vals})
 
             # Regularly copy the online DQN to the target DQN
-            if step % self.target_update_interval == 0:
+            if cur_step % self.target_update_interval == 0:
                 self.copy_online_to_target.run()
 
             # And save regularly
-            if step % self.checkpoint_interval == 0:
+            if cur_step % self.checkpoint_interval == 0:
                 self.saver.save(self.session, self.checkpoint_path)
                 #print(q_values)
                 #print(np.argmax(q_values))
 
             print_str = "                                                                                       \r"
-            print_str += "Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\taction %2d"%(step,self.n_episodes,1.0*step/self.n_episodes,total_reward,avg_reward,action)
+            print_str += "Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\taction %2d"%(cur_step,self.n_episodes,1.0*cur_step/self.n_episodes,total_reward,avg_reward,action)
             sys.stdout.write(print_str)
             sys.stdout.flush()
     
@@ -368,8 +411,8 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate",help="Training rate",required=False,type=float,default=.001)
     parser.add_argument("--discount",help="Decay rate of older samples",required=False,type=float,default=.99)
 
-    parser.add_argument("--epsilon_min",help="minimum random exploration probability",required=False,default=.1)
-    parser.add_argument("--epsilon_max",help="maximum random exploration probability",required=False,default=1.0)
+    parser.add_argument("--epsilon_min",help="minimum random exploration probability",required=False,type=float,default=.1)
+    parser.add_argument("--epsilon_max",help="maximum random exploration probability",required=False,type=float,default=1.0)
     parser.add_argument("--epsilon_steps",help="Steps to go from e_min to e_max",required=False,type=int,default=2000000)
 
     parser.add_argument("--n_prev_states",help="Number of previous states to store in memory",required=False,type=int,default=100000)
@@ -378,7 +421,6 @@ if __name__ == "__main__":
 
 
     parser.add_argument("--learning_interval",help="How many steps between learning step",required=False,type=int,default=4)
-    parser.add_argument("--frames_per_action",help="How many steps between new ",required=False,type=int,default=1)
     parser.add_argument("--minibatch_size",help="How many states to learn off at the same time",required=False,type=int,default=32)
 
     parser.add_argument("--save_rewards",help="Run test, do not perform learning",required=False,action="store_true")#run_test = False
@@ -506,7 +548,7 @@ if __name__ == "__main__":
         momentum=args.momentum,learning_rate=args.learning_rate,discount=args.discount,
         epsilon_min=args.epsilon_min,epsilon_max=args.epsilon_max,epsilon_steps=args.epsilon_steps,
         n_prev_states=args.n_prev_states,checkpoint_interval=args.checkpoint_interval,target_update_interval=args.target_update_interval,
-        learning_interval=args.learning_interval,frames_per_action=args.frames_per_action,minibatch_size=args.minibatch_size,
+        learning_interval=args.learning_interval,minibatch_size=args.minibatch_size,
         save_rewards=args.save_rewards,fresh=args.fresh,render=render,max_neg_reward_steps=args.max_neg_reward_steps)
 
     if run_test:
