@@ -46,7 +46,7 @@ def build_convolution(parent,layer_info):
     #num_output     = 0            #Required input
     #kernel_size    = [5,5]    #Required input
     layer_pad   = "SAME"
-    stride      = [1,1,1,1]
+    stride      = [1,1]
     bias_term   = False
     activation=tf.nn.relu
     initializer = tf.variance_scaling_initializer()
@@ -263,7 +263,7 @@ def build_dense(parent,layer_info):
         activation_type = layer_dense["activation"]
         if activation_type == "relu":
             activation = tf.nn.relu
-    print("Building dense layer with num_output %d, initializer %s and activation %s"%(num_output,activation,kernel_init))
+    print("Building dense layer with num_output %d, initializer %s and activation %s"%(num_output,kernel_init,activation))
     if activation is None:
         return tf.layers.dense(parent,num_output,kernel_initializer=kernel_init)
     else:

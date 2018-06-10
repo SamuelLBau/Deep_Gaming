@@ -2,6 +2,17 @@ This project will attempt to implement a deep Q algorithm to learn how to play v
 
 This project should be built using tensorflow, and possibly pytorch.
 
+This project was install using anaconda
+
+conda create --name Deep_Gaming python=3.5.5
+pip install numpy
+pip install matplotlib
+pip install tensorflow #(tensorflow-gpu if GPU is available)
+pip install gym
+pip install cmake #Required for gym[atari]
+pip install gym[atari]
+pip install Box2D #Only needed for CarRacing, can be ignored if causes problems
+
 
 Key references:
 

@@ -1,0 +1,112 @@
+name: "SnakeNet1"
+layer {
+  name: "input"
+  type: "Input"
+  top: "input"
+  input_param { 
+    shape: { 
+      dim: "None"
+      dim: 25
+      dim: 25 
+      dim: 1 
+    } 
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+  bottom: "input"
+  top: "conv1"
+  convolution_param {
+    num_output: 32
+    activation: "relu"
+    kernel_size: {
+      dim: 5 
+      dim: 5 
+    }
+    stride: {
+      dim: 4 
+      dim: 4 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "conv1"
+  top: "conv2"
+  convolution_param {
+    num_output: 64
+    activation: "relu"
+    kernel_size: {
+      dim: 5 
+      dim: 5 
+    }
+    stride: {
+      dim: 2 
+      dim: 2 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "conv2"
+  top: "conv3"
+  convolution_param {
+    num_output: 64
+    activation: "relu"
+    kernel_size: {
+      dim: 5 
+      dim: 5 
+    }
+    stride: {
+      dim: 1 
+      dim: 1 
+    }
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "reshape1"
+  type: "Reshape"
+  bottom: "conv3"
+  top: "reshape1"
+  shape{
+    dim: -1
+    dim: 1024
+  }
+}
+layer {
+  name: "dense1"
+  type: "Dense"
+  bottom: "reshape1"
+  top: "dense1"
+  dense_param{
+    num_output: 512
+    activation: "relu"
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
+layer {
+  name: "output"
+  type: "Dense"
+  bottom: "dense1"
+  top: "output"
+  dense_param {
+    num_output: 4
+    weight_filler {
+      type: "variance_scaling"
+    }
+  }
+}
