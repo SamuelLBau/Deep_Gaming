@@ -1,4 +1,4 @@
-name: "SnakeNet1"
+name: "SnakeNet"
 layer {
   name: "input"
   type: "Input"

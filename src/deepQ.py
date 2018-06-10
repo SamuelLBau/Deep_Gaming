@@ -467,7 +467,7 @@ if __name__ == "__main__":
     preprocess_func = temp_func
 
     if game_type == "MsPacman-v0":
-        if "mspacman4" in proto_file:
+        if "_history" in proto_file:
             def temp_func(frame):
                 global frame_list
                 mspacman_c = 448 #210 + 164 + 74
