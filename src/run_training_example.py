@@ -3,6 +3,7 @@ import gym
 import numpy as np
 
 import matplotlib
+matplotlib.use('Agg')#Fixes error on DSMP server
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 

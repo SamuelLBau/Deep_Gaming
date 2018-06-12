@@ -1,7 +1,8 @@
 #Custom ignores
 
+/images/*
 src/saved_networks/
-!src/saved_networks/PacNet3*
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

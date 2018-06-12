@@ -3,6 +3,8 @@ from copy import copy
 
 #These are only used in visualization (See render_snake)
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')#Fixes error on DSMP server
 import matplotlib.pyplot as plt
 
 #This is just for debugging

@@ -3,7 +3,7 @@ conda create -n ${virtual_env} python=3.5.5
 source activate ${virtual_env}
 pip install numpy
 pip install matplotlib
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.4.0-rc1
 pip install gym
 pip install cmake
 pip install gym[atari]

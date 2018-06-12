@@ -3,6 +3,8 @@ import os
 import struct
 import numpy as np
 
+import matplotlib
+matplotlib.use('Agg')#Fixes error on DSMP server
 import matplotlib.pyplot as plt
 
 def read_ints(file_path):
@@ -37,8 +39,10 @@ if __name__ == "__main__":
     parser.add_argument("--dir",type=str,help="Select a directory to pull data from",required=True)
 
     args = parser.parse_args()
-
-    path_prefix = args.dir + "/" + os.path.basename(args.dir)
+    config_name = os.path.basename(args.dir)
+    
+    
+    path_prefix = args.dir + "/" + config_name
 
     reward_file = path_prefix + ".rewards"
     q_file = path_prefix + ".qs"
@@ -50,20 +54,31 @@ if __name__ == "__main__":
     rewards_average = np.convolve(rewards,np.ones((10))/10,mode="same")
     qs_average		= np.convolve(qs,np.ones((10))/10,mode="same")
 
-    ax0,=plt.plot(rewards[1::50])
-    ax1,=plt.plot(rewards_average[1::50])
+    
+    dpi=150
+    skip=1
+    
+    game = "CarRacing"
+    fig0 = plt.figure(dpi=dpi)
+    ax0,=plt.plot(rewards[1::skip])
+    ax1,=plt.plot(rewards_average[1::skip])
     plt.legend([ax0,ax1],["Score","Moving average 10"])
     plt.xlabel("Game Number")
-    plt.ylabel("Score")
-    plt.title("MsPacman Score")
+    plt.ylabel("Final Score")
+    plt.title("%s Score"%(game))
     plt.grid()
-    plt.figure()
-
-    ax0,=plt.plot(qs[1::50])
-    ax1,=plt.plot(qs_average[1::50])
+    plt.figaspect(.8)
+    
+    
+    fig1=plt.figure(dpi=dpi)
+    ax0,=plt.plot(qs[1::skip])
+    ax1,=plt.plot(qs_average[1::skip])
     plt.legend([ax0,ax1],["Q sum","Moving average 10"])
     plt.xlabel("Game Number")
-    plt.ylabel("Score")
-    plt.title("MsPacman Total Qs")
+    plt.ylabel("Final Q Sum")
+    plt.title("%s Total Qs"%(game))
     plt.grid()
+    plt.figaspect(.8)
     plt.show()
+    fig0.savefig("%s_score.png"%config_name)
+    fig1.savefig("%s_qs.png"%config_name)

@@ -2,6 +2,10 @@ import numpy
 from snake_game import snake_game
 import tensorflow as tf
 import os
+import gym
+
+import sys
+import argparse
 
 import random
 import numpy as np
@@ -12,10 +16,11 @@ from caffe_builder import build_CNN
 import struct
 
 #Used for display
-import sys
 import time
+import datetime
 
 import matplotlib
+matplotlib.use('Agg')#Fixes error on DSMP server
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
@@ -178,11 +183,14 @@ class deepQ():
 
 
     def select_action(self,q_values,step_num):
-        e = max(self.epsilon_min, self.epsilon_max - (self.epsilon_max-self.epsilon_min) * float(step_num)/self.epsilon_steps)
+
+        #y  =                 m*x + b
+        e_p = -(self.epsilon_max-self.epsilon_min) * (float(step_num)/self.epsilon_steps) + self.epsilon_max
+        e = max(self.epsilon_min,e_p)
         if np.random.rand() < e:
-            return np.random.randint(self.n_outputs) # random action
+            return np.random.randint(self.n_outputs),e # random action
         else:
-            return np.argmax(q_values) # optimal action
+            return np.argmax(q_values),e # optimal action
     
     
     def reset_env(self):
@@ -239,6 +247,7 @@ class deepQ():
         avg_reward = 0
         neg_reward_step_count = 0
         cur_iter = 0  # game iterations
+        time_str = "inf"
         self.reset_env()
 
         #This pre-loads frames into the memory
@@ -250,6 +259,7 @@ class deepQ():
             prev_frames.append((state, 0, reward, next_state, 1.0 - done))
             state = next_state
         action=0
+        start_time = time.time()
         while self.training_step.eval() < self.n_episodes:
             cur_step = self.training_step.eval()
             cur_iter += 1
@@ -265,7 +275,7 @@ class deepQ():
             q_values = self.online_output.eval(feed_dict={self.online_input: np.array([state])})
             #temp_q_values = self.truth_output.eval(feed_dict={self.truth_input: np.array([state])})
             #print("q_VALUES",q_values)
-            action = self.select_action(q_values, cur_step)
+            action,e = self.select_action(q_values, cur_step)
 
             # Online DQN plays
             obs, reward, done, info = self.env.step(self.action_space[action])
@@ -290,6 +300,7 @@ class deepQ():
             else:
                 neg_reward_step_count = 0
 
+
             #Update score / q files, reset environment
             if done:
                 if self.save_rewards:
@@ -299,6 +310,7 @@ class deepQ():
                     ba = bytearray(struct.pack("d", total_max_q)) 
                     q_file.write(ba)
                     q_file.flush()
+
                 if len(avg_reward_list) >= 10:
                     del avg_reward_list[0]
                 avg_reward_list.append(total_reward)
@@ -308,6 +320,7 @@ class deepQ():
                 total_max_q = 0.0
                 game_length = 0
                 total_reward = 0
+                neg_reward_step_count = 0
                 self.reset_env()
 
 
@@ -342,10 +355,17 @@ class deepQ():
                 #print(q_values)
                 #print(np.argmax(q_values))
 
+            if cur_step % 100 == 0:
+                dif_time = time.time() - start_time
+                start_time = time.time()
+                est_time = dif_time * (self.n_episodes - cur_step) / 100.0 #Calculated every 100 steps
+                time_str = str(datetime.timedelta(seconds=est_time)).split(".")[0]
+
             print_str = "                                                                                       \r"
-            print_str += "%s: Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\taction %2d"%(run_string,cur_step,self.n_episodes,1.0*cur_step/self.n_episodes,total_reward,avg_reward,action)
+            print_str += "%s: Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\tEst. t remain: %s\t,e %2.2f"%(run_string,cur_step,self.n_episodes,100.0*cur_step/self.n_episodes,total_reward,avg_reward,time_str,e)
             sys.stdout.write(print_str)
             sys.stdout.flush()
+
     
     def run_test(self):
         print("Running test")
@@ -410,11 +430,11 @@ class deepQ():
 
 frame_list = []
 frame_num = 1
+_preprocess_func = None
 if __name__ == "__main__":
+    global _preprocess_func
     env = None
     render=False
-    import sys
-    import argparse
 
     parser = argparse.ArgumentParser(description='Run a convolutional neural net on an openAI gym environment.')
     parser.add_argument("--proto",type=str,help="Select a prototxt file to load up",required=True)
@@ -457,7 +477,6 @@ if __name__ == "__main__":
         env = snake_game(board_size=[25,25],render=False)
         action_space = list(range(4))
     else:
-        import gym
         env = gym.make(game_type)
         if hasattr(env.action_space,"n"):
             action_space = list(range(env.action_space.n))
@@ -477,87 +496,62 @@ if __name__ == "__main__":
                 raise Exception("Issue with environment, could not detect number of actions")
             print("NUM ACT",action_space)
     
-    def temp_func(space):
-        return np.expand_dims(space,2)
-    preprocess_func = temp_func
 
     if game_type == "MsPacman-v0":
-        if "_history" in proto_file:
-            def temp_func(frame):
-                global frame_list
-                mspacman_c = 448 #210 + 164 + 74
-                img = frame[1:176:2, ::2] # crop and downsize
-                img = img.sum(axis=2) # to greyscale
-                img[img==mspacman_c] = 0 # Improve contrast
-                if len(frame_list)==0:
-                    frame_list = np.array([img,img,img,img])
-                else:
-                    frame_list = np.array([frame_list[1],frame_list[2],frame_list[3],img])
-                img = frame_list[1] + frame_list[2]*2 + frame_list[3] * 3 + img * 4
-                img = img/10
-                img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-                #plt.imshow(img)
-                #plt.show()
-                return img.reshape(88, 80,1)
-            preprocess_func = temp_func
-        else:
-            def temp_func(frame):
-                mspacman_c = 448 #210 + 164 + 74
-                img = frame[1:176:2, ::2] # crop and downsize
-                img = img.sum(axis=2) # to greyscale
-                img[img==mspacman_c] = 0 # Improve contrast
-                img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-                return img.reshape(88, 80,1)
-            preprocess_func = temp_func
+        def temp_func(frame):
+            mspacman_c = 448 #210 + 164 + 74
+            img = frame[1:176:2, ::2] # crop and downsize
+            img = img.sum(axis=2) # to greyscale
+            img[img==mspacman_c] = 0 # Improve contrast
+            img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
+            return img.reshape(88, 80,1)
+        _preprocess_func = temp_func
     elif game_type == "Asteroids-v0":
         def temp_func(frame):
-            global frame_list
             img = frame[34:210:2, ::2] # crop and downsize
             img = img.sum(axis=2) # to greyscale
-            if len(frame_list)==0:
-                frame_list = np.array([img,img,img,img])
-            else:
-                frame_list = np.array([frame_list[1],frame_list[2],frame_list[3],img])
-            img = frame_list[1] + frame_list[2]*2 + frame_list[3] * 3 + img * 4
-            img = img/10
-            img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-            
+
             #plt.imshow(frame)
             #plt.figure()
             #plt.imshow(img)
             #plt.show()
             return img.reshape(88, 80,1)
-        preprocess_func = temp_func
+        _preprocess_func = temp_func
     elif game_type == "CarRacing-v0":
         def temp_func(frame):
-            global frame_list
-            global frame_num
             img =  frame[:,:,0] * 0.2125
             img += frame[:,:,1] * 0.7154
             img += frame[:,:,2] * 0.0721
             img -= 1
+            return img.reshape(96, 96,1)
+        _preprocess_func = temp_func
+
+    else:
+        def temp_func(space):
+            return np.expand_dims(space,2)
+        _preprocess_func = temp_func
+        print("WARNING: NO PREPROCESS_FUNC SPECIFIED")
+
+    if "_history" in proto_file:
+        def history_func(frame):
+            global frame_list
+            global frame_num
+            global _preprocess_func
+            img = _preprocess_func(frame)
+
             if len(frame_list)==0:
                 frame_list = np.array([img,img,img,img])
             else:
                 frame_list = np.array([frame_list[1],frame_list[2],frame_list[3],img])
             img = frame_list[1] + frame_list[2]*2 + frame_list[3] * 3 + img * 4
             img = img/10
+            img = img.astype(np.int8)
 
-            img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-            if frame_num % 50 == 0:
-                frame_num = 0
-
-                #plt.imshow(frame)
-                #plt.figure()
-                #plt.imshow(img)
-                #plt.show()
-            frame_num += 1
-            return img.reshape(96, 96,1)
-        preprocess_func = temp_func
-
+            return img
+        preprocess_func = history_func
     else:
-        print("WARNING: NO PREPROCESS_FUNC SPECIFIED")
-
+        preprocess_func = _preprocess_func
+    #raise Exception("TEMP")
     network = deepQ(game_type,env,proto_file,action_space,preprocess_func,
         game_skip=args.game_skip,n_episodes=args.n_episodes,
         momentum=args.momentum,learning_rate=args.learning_rate,discount=args.discount,
