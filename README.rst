@@ -2,6 +2,9 @@ This project will attempt to implement a deep Q algorithm to learn how to play v
 
 This project is primarily built using tensorflow.
 
+**===============================================================================**
+                                **Setting up**
+**===============================================================================**
 The code base can be cloned using the following command:
     git clone https://github.com/SamuelLBau/Deep_Gaming.git
 
@@ -13,22 +16,32 @@ Setup assumes anaconda has been installed:
 setup.sh and setup_gpu.sh approximatly runs the following commands
 
 conda create --name Deep_Gaming python=3.5.5
+``
 source activate Deep_Gaming
-pip install numpy
-pip install matplotlib
-pip install imageio
-pip install tensorflow #(tensorflow-gpu if GPU is available)
-pip install gym
-pip install cmake #Required for gym[atari]
-pip install gym[atari]
-conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
-echo "Please run <source activate" ${virtual_env} ">"
 
+pip install numpy
+
+pip install matplotlib
+
+pip install imageio
+
+pip install tensorflow #(tensorflow-gpu if GPU is available)
+
+pip install gym
+
+pip install cmake #Required for gym[atari]
+
+pip install gym[atari]
+
+conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
+
+echo "Please run <source activate" ${virtual_env} ">"
+``
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
-After set up, all runnable code
-
-To run examples:
+**===============================================================================**
+                                **Running Examples**
+**===============================================================================**
 
 python load_sample_networks.py:
     #This will load networks into the work area (saved_networks)
@@ -54,7 +67,9 @@ python run_training_example.py [--env <env_name>]:
     #You can choose to run a different environment by adding a --env <environment_name> flag
     #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
 
-To Graph results:
+*===============================================================================*
+                                *Graphing score results*
+*===============================================================================*
     
 python generate_graphs.py --dir <dir_path>
     #This function will grab the .rewards and .qs files from the specified directory and plot the results
@@ -62,7 +77,9 @@ python generate_graphs.py --dir <dir_path>
     #If the --save_rewards flag is set during training, these files will be generated in appropriate saved_networks directory
     #An example would be python generate_graphs.py --dir ./saved_networks/MsPacman-v0_PacNet
     
-Using the tool:
+*===============================================================================*
+                                *Using the Tool
+*===============================================================================*
     #The main program file is deepQ.py, it accepts the following command line arguments:
     
     
