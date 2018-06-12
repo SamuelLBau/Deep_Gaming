@@ -374,7 +374,7 @@ class deepQ():
             sys.stdout.flush()
 
     
-    def run_test(self,max_steps=10000):
+    def run_test(self,max_steps=20000):
         print("Running test")
         frames = []
         tot_reward=0

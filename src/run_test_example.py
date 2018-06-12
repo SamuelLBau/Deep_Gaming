@@ -50,13 +50,6 @@ def carracing_preprocess_func(frame):
     img += frame[:,:,1] * 0.7154
     img += frame[:,:,2] * 0.0721
     img -= 1
-    if len(frame_list)==0:
-        frame_list = np.array([img,img,img,img])
-    else:
-        frame_list = np.array([frame_list[1],frame_list[2],frame_list[3],img])
-    img = frame_list[1] + frame_list[2]*2 + frame_list[3] * 3 + img * 4
-    img = img/10
-    img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
     
     return empty_preprocess_func(img)
 def snake_preprocess_func(frame):
@@ -101,6 +94,7 @@ def configure_carracing_test():
                 action_space.append([i,j,k])
     args["action_space"] = action_space
     args["render"] = True
+    args["max_neg_reward_steps"] = 150
     
     #args["n_episodes"]=4000000
     #args["game_skip"] = 50
@@ -138,7 +132,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Run a convolutional neural net on an openAI gym environment.')
     parser.add_argument("--env",type=str,help="Select a prototxt file to load up",required=False,default="MsPacman-v0")
-    parser.add_argument("--n_iter",type=str,help="Number of tests to run (max score will be rendered)",required=False,type=int,default=0)
+    parser.add_argument("--n_iter",type=int,help="Number of tests to run (max score will be rendered)",required=False,default=0)
     args = parser.parse_args()
     env = args.env
     n_iter=args.n_iter
