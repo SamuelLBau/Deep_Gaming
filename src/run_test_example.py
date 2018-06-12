@@ -152,6 +152,7 @@ if __name__ == "__main__":
             run_tests(args,"CarRacing_Example.gif",num_tests=1)
         except Exception as e:
             print("Failed to run CarRacing example,",str(e))
+            print("CarRacing requires the Box2D Library, which can by tricky to install")
     elif env.lower() == "snake":
         print("Running Snake test")
         #try:

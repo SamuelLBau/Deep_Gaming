@@ -5,6 +5,8 @@ import argparse
 
 src_dir = "./sample_networks/"
 dst_dir = "./saved_networks/"
+if not os.path.isdir(dst_dir):
+    os.mkdir(dst_dir)
 
 parser = argparse.ArgumentParser(description='Replace existing networks with sample_networks')
 parser.add_argument("--confirm",help="Confirm Replacement of directories",required=False,action="store_true")#run_test = False

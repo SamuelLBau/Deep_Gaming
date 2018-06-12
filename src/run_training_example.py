@@ -1,5 +1,6 @@
 import argparse
 import gym
+from snake_game import snake_game
 import numpy as np
 
 import matplotlib
@@ -22,13 +23,16 @@ def run_training(args):
     del network
 
 
+def empty_preprocess_func(frame):
+    return np.expand_dims(frame,2)
+
 def mspacman_preprocess_func(frame):
     mspacman_c = 448 #210 + 164 + 74
     img = frame[1:176:2, ::2] # crop and downsize
     img = img.sum(axis=2) # to greyscale
     img[img==mspacman_c] = 0 # Improve contrast
     img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
-    return img.reshape(88, 80,1)
+    return empty_preprocess_func(img)
 
 def carracing_preprocess_func(frame):
     global frame_list
@@ -45,8 +49,17 @@ def carracing_preprocess_func(frame):
     img = img/10
     img = (img // 3 - 128).astype(np.int8) # normalize from -128 to 127
     
-    return img.reshape(96, 96,1)
-def configure_training_1():
+    return empty_preprocess_func(img)
+def snake_preprocess_func(frame):
+    return empty_preprocess_func(frame)
+def asteroids_preprocess_func(frame):
+        img = frame[34:210:2, ::2] # crop and downsize
+        img = img.sum(axis=2) # to greyscale
+        return empty_preprocess_func(img)
+
+
+
+def configure_mspacman_training():
     args = {}
 
 
@@ -67,9 +80,12 @@ def configure_training_1():
     args["minibatch_size"] = 32
     args["fresh"] = False
     args["learning_interval"] = 4
+
+    args["save_rewards"] = True
+
     return args
     
-def configure_training_2():
+def configure_carracing_training():
     args = {} 
     args["game_type"] = "CarRacing-v0"
     args["env"] = gym.make(args["game_type"])
@@ -91,13 +107,52 @@ def configure_training_2():
     args["n_episodes"]=4000000
     args["game_skip"] = 50
     args["minibatch_size"] = 50
+    args["discount"] = .95
     args["fresh"] = False
     args["save_rewards"] = True
     args["learning_interval"] = 1
-    args["max_neg_reward_steps"] = 250
+    args["max_neg_reward_steps"] = 150
     return args
 
+def configure_snake_training():
+    args = {} 
+    args["game_type"] = "snake"
+    args["env"] = snake_game(board_size=[25,25])
+    args["proto"] = "cfn/snakenet.prototxt"
+    args["preprocess_func"] = snake_preprocess_func
+
+    args["save_rewards"] = True
+    args["game_skip"] = 0
+    args["minibatch_size"] = 30
+    args["learning_interval"] = 1
+
+    return args
+
+ def configure_mspacman_training():
+    args = {}
+
+
+    args["game_type"] = "Asteroids-v0"
+    args["env"] = gym.make(args["game_type"])
+    args["proto"] = "cfn/Asteroids.prototxt"
+    args["action_space"] = list(range(14))
+    args["preprocess_func"] = asteroids_preprocess_func
+    args["n_episodes"]=4000000
+    args["momentum"]=.95
+    args["learning_rate"] = .001
+    args["discount"] = .99
+    args["epsilon_min"]=.100000
+    args["epsilon_max"]=1.000000
     
+    
+    args["game_skip"] = 0
+    args["minibatch_size"] = 32
+    args["fresh"] = False
+    args["learning_interval"] = 1
+
+    args["save_rewards"] = True
+
+    return args   
     
     
 
@@ -110,15 +165,27 @@ if __name__ == "__main__":
 
     if env == "MsPacman-v0":
         print("Running MsPacman test")
-        args = configure_training_1()
+        args = configure_mspacman_training()
         run_training(args)
     elif env == "CarRacing-v0":
         print("Running CarRacing test")
         try:
-            args = configure_training_2()
+            args = configure_carracing_training()
             run_training(args)
         except Exception as e:
             print("Failed to run CarRacing example,",str(e))
+            print("CarRacing requires the Box2D Library, which can by tricky to install")
+    elif env.lower() == "snake":
+        print("Running Snake test")
+        #try:
+        args = configure_snake_test()
+        run_training(args)
+        #except Exception as e:
+        #print("Failed to run Snake example,",str(e))
+    elif env == "Asteroids-v0":
+        print("Running Asteroids test")
+        args = configure_asteroids_training()
+        run_training(args)
     else:
         print("Unsupported test environment %s"%(env))
 

@@ -58,7 +58,7 @@ if __name__ == "__main__":
     dpi=150
     skip=1
     
-    game = "CarRacing"
+    game = config_name
     fig0 = plt.figure(dpi=dpi)
     ax0,=plt.plot(rewards[1::skip])
     ax1,=plt.plot(rewards_average[1::skip])
