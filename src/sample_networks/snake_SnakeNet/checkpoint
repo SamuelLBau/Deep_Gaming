@@ -1,0 +1,2 @@
+model_checkpoint_path: "snake_SnakeNet.ckpt"
+all_model_checkpoint_paths: "snake_SnakeNet.ckpt"
