@@ -9,15 +9,16 @@ The code base can be cloned using the following command:
     git clone https://github.com/SamuelLBau/Deep_Gaming.git
 
 The python environment for this code base can by prepared by running setup.sh, or setup_GPU.sh if a GPU is available.
-If running on a windows machine, the script should also work as a .cmd file, or each command run manually
+If running on a windows machine, the script should also work as a .cmd file, or each command can be run manually
 
-Setup assumes anaconda has been installed:
+Setup assumes anaconda has been installed and properly configured,
+Only modules that are not included with a default anaconda install are included 
 
 setup.sh and setup_gpu.sh approximatly runs the following commands
 
 conda create --name Deep_Gaming python=3.5.5
-``
-source activate Deep_Gaming
+
+``source activate Deep_Gaming
 
 pip install numpy
 
@@ -35,8 +36,8 @@ pip install gym[atari]
 
 conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
 
-echo "Please run <source activate" ${virtual_env} ">"
-``
+echo "Please run <source activate" ${virtual_env} ">"``
+
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
 **===============================================================================**
@@ -51,8 +52,10 @@ python load_sample_networks.py:
     
 python run_test_example.py [--env <env_name>]:
     #By default, this will run the MsPacman example, as a decent sample network has been provided
+    #It will generate a .gif file of the episode
     
     #You can choose to run a different environment by adding a --env <environment_name> flag
+    #You can choose how many episodes to run (only best will be rendered) by adding --n_iter <#> flag
     
     #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
     
@@ -67,24 +70,27 @@ python run_training_example.py [--env <env_name>]:
     #You can choose to run a different environment by adding a --env <environment_name> flag
     #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
 
-*===============================================================================*
-                                *Graphing score results*
-*===============================================================================*
+**===============================================================================**
+                                **Graphing score results**
+**===============================================================================**
     
 python generate_graphs.py --dir <dir_path>
     #This function will grab the .rewards and .qs files from the specified directory and plot the results
+    #Plots will be saved as a .png if possible
     
     #If the --save_rewards flag is set during training, these files will be generated in appropriate saved_networks directory
     #An example would be python generate_graphs.py --dir ./saved_networks/MsPacman-v0_PacNet
     
-*===============================================================================*
-                                *Using the Tool
-*===============================================================================*
+**===============================================================================**
+                                **Using the Tool**
+**===============================================================================**
     #The main program file is deepQ.py, it accepts the following command line arguments:
     
     
 
-Key references:
+**===============================================================================**
+                                **Miscellaneous References**
+**===============================================================================**
 
 Blog page about deep-Q learning: https://leonardoaraujosantos.gitbooks.io/artificial-inteligence/content/deep_q_learning.html
 
