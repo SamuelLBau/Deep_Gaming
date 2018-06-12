@@ -401,8 +401,6 @@ class deepQ():
                 tot_reward += reward
                 img = self.env.render(mode="rgb_array")
                 frames.append(img)
-                if done:
-                    break
 
                 if reward <=0.0:
                     neg_reward_step_count += 1
@@ -411,6 +409,10 @@ class deepQ():
                         neg_reward_step_count = 0
                 else:
                     neg_reward_step_count = 0
+
+                if done:
+                    break
+
             else:
                 print("NOTE: game did not end with done flag")
 

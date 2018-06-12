@@ -1,0 +1,2 @@
+model_checkpoint_path: "CarRacing-v0_CarNet.ckpt"
+all_model_checkpoint_paths: "CarRacing-v0_CarNet.ckpt"

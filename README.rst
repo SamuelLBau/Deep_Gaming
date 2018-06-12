@@ -63,7 +63,7 @@ python generate_graphs.py --dir <dir_path>
     #An example would be python generate_graphs.py --dir ./saved_networks/MsPacman-v0_PacNet
     
 Using the tool:
-    #The main 
+    #The main program file is deepQ.py, it accepts the following command line arguments:
     
     
 
