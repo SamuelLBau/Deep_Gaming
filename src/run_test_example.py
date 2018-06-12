@@ -138,32 +138,43 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Run a convolutional neural net on an openAI gym environment.')
     parser.add_argument("--env",type=str,help="Select a prototxt file to load up",required=False,default="MsPacman-v0")
+    parser.add_argument("--n_iter",type=str,help="Number of tests to run (max score will be rendered)",required=False,type=int,default=0)
     args = parser.parse_args()
     env = args.env
+    n_iter=args.n_iter
+
 
     if env == "MsPacman-v0":
+        if n_iter == 0:
+            n_iter = 5
         print("Running MsPacman test")
         args = configure_mspacman_test()
-        run_tests(args,"Mspacman_Example.gif",num_tests=10)
+        run_tests(args,"Mspacman_Example.gif",num_tests=n_iter)
     elif env == "CarRacing-v0":
+        if n_iter == 0:
+            n_iter = 1
         print("Running CarRacing test")
         try:
             args = configure_carracing_test()
-            run_tests(args,"CarRacing_Example.gif",num_tests=1)
+            run_tests(args,"CarRacing_Example.gif",num_tests=n_iter)
         except Exception as e:
             print("Failed to run CarRacing example,",str(e))
             print("CarRacing requires the Box2D Library, which can by tricky to install")
     elif env.lower() == "snake":
+        if n_iter == 0:
+            n_iter = 1
         print("Running Snake test")
         #try:
         args = configure_snake_test()
-        run_tests(args,"Snake_Example.gif",num_tests=1)
+        run_tests(args,"Snake_Example.gif",num_tests=n_iter)
         #except Exception as e:
         #print("Failed to run Snake example,",str(e))
     elif env == "Asteroids-v0":
+        if n_iter == 0:
+            n_iter = 3
         print("Running Asteroids test")
         args = configure_asteroids_test()
-        run_tests(args,"Asteroids_Example.gif",num_tests=1)
+        run_tests(args,"Asteroids_Example.gif",num_tests=n_iter)
     else:
         print("Unsupported test environment %s"%(env))
 

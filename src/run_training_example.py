@@ -120,6 +120,7 @@ def configure_snake_training():
     args["env"] = snake_game(board_size=[25,25])
     args["proto"] = "cfn/snakenet.prototxt"
     args["preprocess_func"] = snake_preprocess_func
+    args["action_space"] = list(range(4))
 
     args["save_rewards"] = True
     args["game_skip"] = 0
@@ -128,7 +129,7 @@ def configure_snake_training():
 
     return args
 
- def configure_mspacman_training():
+def configure_asteroids_training():
     args = {}
 
 
@@ -164,11 +165,11 @@ if __name__ == "__main__":
     env = args.env
 
     if env == "MsPacman-v0":
-        print("Running MsPacman test")
+        print("Running MsPacman training")
         args = configure_mspacman_training()
         run_training(args)
     elif env == "CarRacing-v0":
-        print("Running CarRacing test")
+        print("Running CarRacing training")
         try:
             args = configure_carracing_training()
             run_training(args)
@@ -176,18 +177,18 @@ if __name__ == "__main__":
             print("Failed to run CarRacing example,",str(e))
             print("CarRacing requires the Box2D Library, which can by tricky to install")
     elif env.lower() == "snake":
-        print("Running Snake test")
+        print("Running Snake training")
         #try:
-        args = configure_snake_test()
+        args = configure_snake_training()
         run_training(args)
         #except Exception as e:
         #print("Failed to run Snake example,",str(e))
     elif env == "Asteroids-v0":
-        print("Running Asteroids test")
+        print("Running Asteroids training")
         args = configure_asteroids_training()
         run_training(args)
     else:
-        print("Unsupported test environment %s"%(env))
+        print("Unsupported training environment %s"%(env))
 
 
 
