@@ -49,7 +49,7 @@ from math import isnan
 class deepQ():
     #[80,80],4,4,
     def __init__(self,game_type,env,proto,action_space,preprocess_func,
-        game_skip=0,n_episodes=10000000,
+        game_skip=0,n_steps=10000000,
         momentum=.95,learning_rate=.001,discount=.99,
         epsilon_min=.1,epsilon_max=1.0,epsilon_steps=2000000,
         n_prev_states=100000,checkpoint_interval=500,target_update_interval=5000,
@@ -67,7 +67,7 @@ class deepQ():
         self.preprocess_func = preprocess_func
 
         self.game_skip = game_skip
-        self.n_episodes = n_episodes
+        self.n_steps = n_steps
 
         self.momentum = momentum                #does not need to be saved
         self.learning_rate=learning_rate        #does not need to be saved
@@ -164,7 +164,7 @@ class deepQ():
             file.write(str("--proto %s "%(self.proto)))
 
             file.write(str("--game_skip %d "%(self.game_skip)))
-            file.write(str("--n_episodes %d "%(self.n_episodes)))
+            file.write(str("--n_steps %d "%(self.n_steps)))
 
             file.write(str("--momentum %f "%(self.momentum)))
             file.write(str("--learning_rate %f "%(self.learning_rate)))
@@ -267,7 +267,11 @@ class deepQ():
             state = next_state
         action=0
         start_time = time.time()
-        while self.training_step.eval() < self.n_episodes+1:
+
+        if not self.training_step.eval() < self.n_steps+1:
+            print("Warning, no iterations will be run. n_steps= %d, cur_step = %d"%(self.n_steps,self.training_step.eval()-1))
+        
+        while self.training_step.eval() < self.n_steps+1:
             cur_step = self.training_step.eval()
             cur_iter += 1
 
@@ -365,11 +369,11 @@ class deepQ():
             if cur_step % 100 == 0:
                 dif_time = time.time() - start_time
                 start_time = time.time()
-                est_time = dif_time * (self.n_episodes - cur_step) / 100.0 #Calculated every 100 steps
+                est_time = dif_time * (self.n_steps - cur_step) / 100.0 #Calculated every 100 steps
                 time_str = str(datetime.timedelta(seconds=est_time)).split(".")[0]
 
             print_str = "                                                                                       \r"
-            print_str += "%s: Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\tEst. t remain: %s\t,e %2.2f"%(run_string,cur_step,self.n_episodes,100.0*cur_step/self.n_episodes,total_reward,avg_reward,time_str,e)
+            print_str += "%s: Step %8d of %8d (%2.4f%%),\tCur_Reward %.3f,\tAverage Reward %.3f,\tEst. t remain: %s\t,e %2.2f"%(run_string,cur_step,self.n_steps,100.0*cur_step/self.n_steps,total_reward,avg_reward,time_str,e)
             sys.stdout.write(print_str)
             sys.stdout.flush()
 
@@ -462,7 +466,7 @@ if __name__ == "__main__":
     parser.add_argument("--proto",type=str,help="Select a prototxt file to load up",required=True)
     parser.add_argument("--env",type=str,help="Select a openai environment to load",required=True)
     parser.add_argument("--game_skip",help="Number of frames to skip after env is reset",required=False,type=int,default=80)
-    parser.add_argument("--n_episodes",help="Number of episodes to train",required=False,type=int,default=4000000)
+    parser.add_argument("--n_steps",help="Number of steps to train",required=False,type=int,default=4000000)
 
     parser.add_argument("--momentum",help="Training momentum",required=False,type=float,default=.95)
     parser.add_argument("--learning_rate",help="Training rate",required=False,type=float,default=.001)
@@ -575,7 +579,7 @@ if __name__ == "__main__":
         preprocess_func = _preprocess_func
     #raise Exception("TEMP")
     network = deepQ(game_type,env,proto_file,action_space,preprocess_func,
-        game_skip=args.game_skip,n_episodes=args.n_episodes,
+        game_skip=args.game_skip,n_steps=args.n_steps,
         momentum=args.momentum,learning_rate=args.learning_rate,discount=args.discount,
         epsilon_min=args.epsilon_min,epsilon_max=args.epsilon_max,epsilon_steps=args.epsilon_steps,
         n_prev_states=args.n_prev_states,checkpoint_interval=args.checkpoint_interval,target_update_interval=args.target_update_interval,

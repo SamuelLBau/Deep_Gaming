@@ -68,7 +68,7 @@ def configure_mspacman_training():
     args["proto"] = "cfn/MsPacman-v0.prototxt"
     args["action_space"] = list(range(9))
     args["preprocess_func"] = mspacman_preprocess_func
-    args["n_episodes"]=4000000
+    args["n_steps"]=4000000
     args["momentum"]=.95
     args["learning_rate"] = .001
     args["discount"] = .99
@@ -104,7 +104,7 @@ def configure_carracing_training():
                 action_space.append([i,j,k])
     args["action_space"] = action_space
     
-    args["n_episodes"]=4000000
+    args["n_steps"]=4000000
     args["game_skip"] = 50
     args["minibatch_size"] = 50
     args["discount"] = .95
@@ -138,7 +138,7 @@ def configure_asteroids_training():
     args["proto"] = "cfn/Asteroids.prototxt"
     args["action_space"] = list(range(14))
     args["preprocess_func"] = asteroids_preprocess_func
-    args["n_episodes"]=4000000
+    args["n_steps"]=4000000
     args["momentum"]=.95
     args["learning_rate"] = .001
     args["discount"] = .99
