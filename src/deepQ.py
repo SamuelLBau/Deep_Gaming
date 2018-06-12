@@ -124,7 +124,11 @@ class deepQ():
                 self.sampled_vals = tf.placeholder(tf.float32, shape=[None, 1])
                 selected_qs = self.online_output * tf.one_hot(self.action, self.n_outputs)
 
-                q_values = tf.reduce_sum(selected_qs,keepdims=True,axis=1)
+                try:
+                    q_values = tf.reduce_sum(selected_qs,keepdims=True,axis=1)
+                except Exception as e:
+                    #Older versions of tensorflow use keep_dims
+                    q_values = tf.reduce_sum(selected_qs,keep_dims=True,axis=1)
                 error = tf.abs(self.sampled_vals - q_values)
 
                 less_1_error = tf.square(error)
