@@ -267,7 +267,7 @@ class deepQ():
             state = next_state
         action=0
         start_time = time.time()
-        while self.training_step.eval() < self.n_episodes:
+        while self.training_step.eval() < self.n_episodes+1:
             cur_step = self.training_step.eval()
             cur_iter += 1
 
