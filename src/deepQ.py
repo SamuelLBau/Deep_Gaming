@@ -132,11 +132,12 @@ class deepQ():
                 error = tf.abs(self.sampled_vals - q_values)
 
                 less_1_error = tf.square(error)
-                more_1_error = 2 * error - 1
+                more_1_error = 2.0 * error - 1.0
 
                 #If error is < 1, square the error
                 #If error > 1 double the error - 1
-                correct_err = tf.minimum(less_1_error,more_1_error)
+                less_vals = tf.less(error,1.0)
+                correct_err = tf.where(less_vals,less_1_error,more_1_error)
                 self.loss = tf.reduce_mean(correct_err)
 
                 self.training_step = tf.Variable(0, trainable=False, name='global_step')
