@@ -1,0 +1,2 @@
+model_checkpoint_path: "PacNet3.ckpt"
+all_model_checkpoint_paths: "PacNet3.ckpt"

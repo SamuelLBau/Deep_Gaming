@@ -24,6 +24,8 @@ matplotlib.use('Agg')#Fixes error on DSMP server
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 
+import imageio #Backup gif writer if matplotlib fails
+
 from copy import deepcopy
 ##DEBUGGING
 from math import isnan
@@ -367,17 +369,16 @@ class deepQ():
             sys.stdout.flush()
 
     
-    def run_test(self):
+    def run_test(self,max_steps=10000):
         print("Running test")
         frames = []
-        n_max_steps = 30000
         tot_reward=0
         with tf.Session() as sess:
             self.saver.restore(sess, self.checkpoint_path)
 
             obs = self.env.reset()
             neg_reward_step_count=0
-            for step in range(n_max_steps):
+            for step in range(max_steps):
                 state = self.preprocess_func(obs)
                 # Online DQN evaluates what to do
                 q_values = self.online_output.eval(feed_dict={self.online_input: [state]})
@@ -405,6 +406,8 @@ class deepQ():
                         neg_reward_step_count = 0
                 else:
                     neg_reward_step_count = 0
+            else:
+                print("NOTE: game did not end with done flag")
 
 
         print("Rendering test")
@@ -418,13 +421,25 @@ class deepQ():
             patch = plt.imshow(frames[-1])
             plt.axis('off')
             return animation.FuncAnimation(fig, update_scene, fargs=(frames, patch), frames=len(frames), repeat=repeat, interval=interval)
-        return [plot_animation(frames),reward]
+        return [frames,reward,frames]
 
-    def play_test(self,anim,gif_path="TEMP.gif"):
+    def play_test(self,anim,frames,gif_path=None):
         try:
-            anim.save(gif_path)
-        except:
-            print("Could not save gif, displaying final frame instead")
+            plt.imshow(anim)
+            plt.show()
+            if not gif_path is None:
+                anim.save(gif_path)
+        except Exception as e:
+            print("Failed to display animation %s"%(str(e)))
+            if not gif_path is None:
+                print("Could not save gif, attempting to use imageio")
+                try:
+                    with imageio.get_writer(gif_path,mode="I",fps=25) as gif_writer:
+                        for frame in frames:
+                            gif_writer.append_data(frame)
+                except Exception as e2:
+                    print("ImageIO Writer also failed"%(str(e2)))
+
         
         plt.show()
 
@@ -474,7 +489,7 @@ if __name__ == "__main__":
         raise Exception("Caffe file not found: %s"%(proto_file))
 
     if game_type == "snake":
-        env = snake_game(board_size=[25,25],render=False)
+        env = snake_game(board_size=[25,25])
         action_space = list(range(4))
     else:
         env = gym.make(game_type)
@@ -527,8 +542,8 @@ if __name__ == "__main__":
         _preprocess_func = temp_func
 
     else:
-        def temp_func(space):
-            return np.expand_dims(space,2)
+        def temp_func(frame):
+            return np.expand_dims(frame,2)
         _preprocess_func = temp_func
         print("WARNING: NO PREPROCESS_FUNC SPECIFIED")
 
@@ -561,7 +576,7 @@ if __name__ == "__main__":
         save_rewards=args.save_rewards,fresh=args.fresh,render=render,max_neg_reward_steps=args.max_neg_reward_steps)
 
     if run_test:
-        anim,score = network.run_test()
-        network.play_test(anim)
+        anim,score,frames = network.run_test()
+        network.play_test(anim,frames)
     else:
         network.train()

@@ -1,7 +1,7 @@
 import random as rand
 from copy import copy
 
-#These are only used in visualization (See render_snake)
+#These are only used in visualization (See render)
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')#Fixes error on DSMP server
@@ -22,7 +22,7 @@ class snake_game():
     ACTION_dict = {}
     action_space = action_space_c()
 
-    def __init__(self,board_size=DEFAULT_BOARD_SIZE,render=False,save=False):
+    def __init__(self,board_size=DEFAULT_BOARD_SIZE,save=False):
         self.board_size = board_size
         self.snake = self.get_rand_pos(board_size) #index0 is the head, index-1 is the tail
 
@@ -32,7 +32,6 @@ class snake_game():
         self.ACTION_dict[2] = self.ACTION_dict["left"] = self.VALID_DIRS[1]
         self.ACTION_dict[3] = self.ACTION_dict["right"] = self.VALID_DIRS[2]
 
-        self.render=render
         self.save=save
 
         self.fig = plt.figure()
@@ -41,12 +40,11 @@ class snake_game():
     def get_rand_pos(self,board_size):
         return [rand.randrange(0,board_size[0]),
                     rand.randrange(0,board_size[1])]
-    def reset(self,render=False,save=False):
+    def reset(self,save=False):
         self.food_pos   = self.get_rand_pos(self.board_size)
         init_pos        =  self.get_rand_pos(self.board_size)
         self.snake      = [init_pos]
 
-        self.render=render
         self.save=save
         return self.get_image()
 
@@ -98,8 +96,6 @@ class snake_game():
                 ate_food = 1
                 while self.is_pos_in_list(self.food_pos,self.snake):
                     self.food_pos =  self.get_rand_pos(self.board_size)
-            if self.render:
-                self.render_snake()
             return [self.get_image(),ate_food,False,None]
         else:
             return [self.get_image(),0,False,None]
@@ -119,15 +115,9 @@ class snake_game():
         snake_str = snake_str[:-1] + "}"
         print("PRINTING NEW SNAKE")
         print(snake_str)
-    def render_snake(self):
+    def render(self,mode="rgb_array"):
         board = self.get_image()
-        plt.figure(self.fig.number)
-        plt.ion()
-        plt.clf()
-        plt.imshow(board)
-        plt.show()
-        plt.pause(1e-10)
-        #plt.imsave("garbage.png",board)
+        return board
 def main_test():
     game = snake_game()
 
@@ -136,7 +126,7 @@ def main_test():
         if(is_done):
             print("Snake died at %d"%(score))
             break
-        game.render_snake()
+        game.render()
 if __name__ == "__main__":
     main_test()
 
