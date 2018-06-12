@@ -143,16 +143,20 @@ if __name__ == "__main__":
     env = args.env
     n_iter=args.n_iter
 
+    if n_iter == 0:
+        if env == "MsPacman-v0":
+            n_iter = 5
+        elif env == "Asteroids-v0":
+            n_iter = 3
+        else:
+            n_iter = 1
+
 
     if env == "MsPacman-v0":
-        if n_iter == 0:
-            n_iter = 5
         print("Running MsPacman test")
         args = configure_mspacman_test()
         run_tests(args,"Mspacman_Example.gif",num_tests=n_iter)
     elif env == "CarRacing-v0":
-        if n_iter == 0:
-            n_iter = 1
         print("Running CarRacing test")
         try:
             args = configure_carracing_test()
@@ -161,8 +165,6 @@ if __name__ == "__main__":
             print("Failed to run CarRacing example,",str(e))
             print("CarRacing requires the Box2D Library, which can by tricky to install")
     elif env.lower() == "snake":
-        if n_iter == 0:
-            n_iter = 1
         print("Running Snake test")
         #try:
         args = configure_snake_test()
@@ -170,8 +172,6 @@ if __name__ == "__main__":
         #except Exception as e:
         #print("Failed to run Snake example,",str(e))
     elif env == "Asteroids-v0":
-        if n_iter == 0:
-            n_iter = 3
         print("Running Asteroids test")
         args = configure_asteroids_test()
         run_tests(args,"Asteroids_Example.gif",num_tests=n_iter)

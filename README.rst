@@ -26,13 +26,15 @@ echo "Please run <source activate" ${virtual_env} ">"
 
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
-
+After set up, all runnable code
 
 To run examples:
 
 python load_sample_networks.py:
     #This will load networks into the work area (saved_networks)
     #If this will cause existing networks to be overwritten, confirmation will be required
+    #This must be used before using run_test the first time, unless run_training_example has been
+    #run for the specified environment
     
 python run_test_example.py [--env <env_name>]:
     #By default, this will run the MsPacman example, as a decent sample network has been provided
