@@ -107,7 +107,8 @@ python load_sample_networks.py:
     
 python run_test_demo.py [--env <env_name>]:
     #By default, this will run the MsPacman demo, as a decent sample network has been provided
-    #It will generate a .gif file of the episode
+    #It will generate a .gif file of the episode (See final print statements)
+    #Gifs can't be displayed on the server, so we recommend copying and running them on another machine
     
     #You can choose to run a different environment by adding a --env <environment_name> flag
     #You can choose how many episodes to run (only best will be rendered) by adding --n_iter <#> flag
@@ -124,6 +125,26 @@ python run_training_demo.py [--env <env_name>]:
     
     #You can choose to run a different environment by adding a --env <environment_name> flag
     #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
+    
+    
+python run_test_demo.ipynb:
+    #Serves same purpose as run_test_demo.py, but as a notebook. We were unable to enable animations on the notebooks,
+    #So the only difference here is that the final frame of the played game is displayed on the notebook
+    
+    #NOTE: This has not been thoroughly tested and the setup.sh scripts will not configure these notebooks properly,
+    because the notebook session is loaded before the scripts can run, and we do not know how to open new notebook session.
+    
+    #Instead of command line parameters, cell 2 has 2 variables at the top: env and n_iter, these have the same usage as run_test_demo.py
+   
+python run_training_demo.ipynb:
+    #Serves same purpose as run_training_demo.py, but as a notebook.
+    There is no useful difference between this file and run_training_demo.py. We recommend using run_training_demo.py instead of this, as
+    the print statements are clearer and more informative.
+    
+    #NOTE: This has not been thoroughly tested and the setup.sh scripts will not configure these notebooks properly,
+    because the notebook session is loaded before the scripts can run, and we do not know how to open new notebook session.
+    
+    #Instead of command line parameters, cell 2 has 1 variable at the top: env, it has the same usage as run_training_demo.py args
 
 **===============================================================================**
                                 **Graphing score results**
