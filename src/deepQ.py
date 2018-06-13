@@ -445,6 +445,7 @@ class deepQ():
             plt.show()
             if not gif_path is None:
                 anim.save(gif_path)
+                print("Successfully saved %s using matplotlib"%(gif_path))
         except Exception as e:
             print("Failed to display animation %s"%(str(e)))
             if not gif_path is None:
@@ -453,6 +454,7 @@ class deepQ():
                     with imageio.get_writer(gif_path,mode="I",fps=25) as gif_writer:
                         for frame in frames:
                             gif_writer.append_data(frame)
+                    print("Successfully saved %s using imageio"%(gif_path))
                 except Exception as e2:
                     print("ImageIO Writer also failed"%(str(e2)))
 
