@@ -64,17 +64,27 @@ Only modules that are not included with a default anaconda install are included
 
 setup.sh and setup_gpu.sh approximatly runs the following commands
 
-|conda create --name Deep_Gaming python=3.5.5
-|source activate Deep_Gaming
-|pip install numpy
-|pip install matplotlib
-|pip install imageio
-|pip install tensorflow #(tensorflow-gpu if GPU is available)
-|pip install gym
-|pip install cmake #Required for gym[atari]
-|pip install gym[atari]
-|conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
-|echo "Please run <source activate" ${virtual_env} ">"
+conda create --name Deep_Gaming python=3.5.5
+
+``source activate Deep_Gaming
+
+pip install numpy
+
+pip install matplotlib
+
+pip install imageio
+
+pip install tensorflow #(tensorflow-gpu if GPU is available)
+
+pip install gym
+
+pip install cmake #Required for gym[atari]
+
+pip install gym[atari]
+
+conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
+
+echo "Please run <source activate" ${virtual_env} ">"``
 
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
@@ -83,82 +93,85 @@ The virtual environment can then be loaded using <source activate Deep_Gaming> o
 **===============================================================================**
 
 python load_sample_networks.py:
-|    This will load networks into the work area (saved_networks)
-|    If this will cause existing networks to be overwritten, confirmation will be required
-|    This must be used before using run_test the first time, unless run_training_example has been
-|    run for the specified environment
+    #This will load networks into the work area (saved_networks)
+    #If this will cause existing networks to be overwritten, confirmation will be required
+    #This must be used before using run_test the first time, unless run_training_example has been
+    #run for the specified environment
     
 python run_test_example.py [--env <env_name>]:
-|    By default, this will run the MsPacman example, as a decent sample network has been provided
-|    It will generate a .gif file of the episode
+    #By default, this will run the MsPacman example, as a decent sample network has been provided
+    #It will generate a .gif file of the episode
     
-|    You can choose to run a different environment by adding a --env <environment_name> flag
-|    You can choose how many episodes to run (only best will be rendered) by adding --n_iter <#> flag    
-|    Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
+    #You can choose to run a different environment by adding a --env <environment_name> flag
+    #You can choose how many episodes to run (only best will be rendered) by adding --n_iter <#> flag
     
-|    NOTE: We do not have a method of displaying graphics from the server. Results will be saved to a .gif file
-|    Which can be loaded to another computer to play
-|    ALSO NOTE: CarRacing-v0 in particular only works when rendering is enabled, so it will not run on the server
+    #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
+    
+    #NOTE: We do not have a method of displaying graphics from the server. Results will be saved to a .gif file
+    #Which can be loaded to another computer to play
+    #Also NOTE: CarRacing-v0 in particular only works when rendering is enabled, so it will not run on the server
     
 python run_training_example.py [--env <env_name>]:
-|    By default, this will run train MsPacman, as a decent sample network has been provided
-|    network
+    #By default, this will run train MsPacman, as a decent sample network has been provided
+    #network
     
-|    You can choose to run a different environment by adding a --env <environment_name> flag
-|    Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
+    #You can choose to run a different environment by adding a --env <environment_name> flag
+    #Supported environments are: snake,MsPacman-v0,Asteroids-v0,CarRacing-v0
 
 **===============================================================================**
                                 **Graphing score results**
 **===============================================================================**
     
 python generate_graphs.py --dir <dir_path>
-|    This function will grab the .rewards and .qs files from the specified directory and plot the results
-|    Plots will be saved as a .png if possible
+    #This function will grab the .rewards and .qs files from the specified directory and plot the results
+    #Plots will be saved as a .png if possible
     
-|    If the --save_rewards flag is set during training, these files will be generated in appropriate saved_networks directory
-|    An example would be python generate_graphs.py --dir ./saved_networks/MsPacman-v0_PacNet
+    #If the --save_rewards flag is set during training, these files will be generated in appropriate saved_networks directory
+    #An example would be python generate_graphs.py --dir ./saved_networks/MsPacman-v0_PacNet
     
 **===============================================================================**
                                 **Using the Tool**
 **===============================================================================**
-|    The main program file is deepQ.py, it accepts the following command line arguments:
+    #The main program file is deepQ.py, it accepts the following command line arguments:
     
     Required:
-|      --env <string> #The environment you want to run, supports {snake,MsPacman-v0,CarRacing-v0,Asteroids-v0}
-|      --proto <string> #Path to .prototxt file ex: cfn/MsPacman-v0.prototxt
+      --env <string>    #The environment you want to run, supports {snake,MsPacman-v0,CarRacing-v0,Asteroids-v0}
+      --proto <string>  #Path to .prototxt file ex: cfn/MsPacman-v0.prototxt
       
     Recommended: (Do not use them all, but keep them in mind)
-|      --fresh           #Include to wipe the existing network (If there is one) and begin anew
-|      --save_rewards    #Include to save the .reward and .qs files used in plotting improvement over time
-|      --test            #Include to generate an example run instead of a training run (Generates Example_run.gif)
-|      --max_neg_reward_steps <int> #Include to stop run early if too many consecutive negative rewards occur
-|      --game_skip <int>  #Number of frames to skip every time environment is reset
+      --fresh           #Include to wipe the existing network (If there is one) and begin anew
+      --save_rewards    #Include to save the .reward and .qs files used in plotting improvement over time
+      --test            #Include to generate an example run instead of a training run (Generates Example_run.gif)
+      --max_neg_reward_steps <int> #Include to stop run early if too many consecutive negative rewards occur
+      --game_skip <int>  #Number of frames to skip every time environment is reset
       
     Other:
-|      --n_steps <int>    #Number of training steps to take (Training will not occur if this number is less that # already completed)
+      --n_steps <int>    #Number of training steps to take (Training will not occur if this number is less that # already completed)
       
-|      --n_prev_states <int>         #Number of previous states to hold in memory, network will perform poorly if this is too small to represent environment
-|      --checkpoint_interval <int>   #Interval at which a checkpoint of the network is saved
-|      --target_update_interval<int> #Interval at which agent is copied to target agent
+      --n_prev_states <int>         #Number of previous states to hold in memory, network will perform poorly if this is too small to represent environment
+      --checkpoint_interval <int>   #Interval at which a checkpoint of the network is saved
+      --target_update_interval<int> #Interval at which agent is copied to target agent
       
-|      --learning_interval <int>     #Interval at which network should learn
-|      --minibatch_size <int>        #Number of samples target network should examine when estimating Q
+      --learning_interval <int>     #Interval at which network should learn
+      --minibatch_size <int>        #Number of samples target network should examine when estimating Q
       
-|      --momentum <float>            #Momentum value passed to momentum SGD optimizer
-|      --learning_rate <float>       #Learning rate passed to momentum SGD optimizer
+      --momentum <float>            #Momentum value passed to momentum SGD optimizer
+      --learning_rate <float>       #Learning rate passed to momentum SGD optimizer
       
-|      --epsilon_min <float>         #Minimum probability of taking random action during training
-|      --epsilon_max <float>         #Maximum probability of taking random action during training
-|      --epsion_steps <int>          #Number of steps to linearly go from epsilon max to epsilon min
+      --epsilon_min <float>         #Minimum probability of taking random action during training
+      --epsilon_max <float>         #Maximum probability of taking random action during training
+      --epsion_steps <int>          #Number of steps to linearly go from epsilon max to epsilon min
       
-|      --discount <float>            #Amount to discount the target estimate Q
+      --discount <float>            #Amount to discount the target estimate Q
 
       
     Example uses:
 
-|      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --learning_interval 4 --save_rewards 
-|      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --test
-|      python deepQ.py --env CarRacing-v0 --proto cfn/CarRacing-v0.prototxt --max_neg_reward_steps 150 --save_rewards --fresh
+      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --learning_interval 4 --save_rewards
+      
+      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --test
+      
+      python deepQ.py --env CarRacing-v0 --proto cfn/CarRacing-v0.prototxt --max_neg_reward_steps 150 --save_rewards --fresh
 
 **===============================================================================**
                                 **Miscellaneous References**
