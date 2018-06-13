@@ -66,7 +66,7 @@ setup.sh and setup_gpu.sh approximatly runs the following commands
 
 conda create --name Deep_Gaming python=3.5.5
 
-``source activate Deep_Gaming
+source activate Deep_Gaming
 
 pip install numpy
 
@@ -84,7 +84,7 @@ pip install gym[atari]
 
 conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
 
-echo "Please run <source activate" ${virtual_env} ">"``
+echo "Please run <source activate" ${virtual_env} ">"
 
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
