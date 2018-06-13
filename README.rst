@@ -63,6 +63,8 @@ Deep_Gaming/src
                                 **Setting up**
 **===============================================================================**
 
+NOTE: If running jupyter, please use launch-py3torch-gpu.sh, if just using python, any are find, but gpu preferred
+
 The python environment for this code base can by prepared by running setup.sh, or setup_GPU.sh if a GPU is available.
 If running on a windows machine, the script should also work as a .cmd file, or each command can be run manually
 
@@ -70,6 +72,7 @@ Setup assumes anaconda has been installed and properly configured,
 Only modules that are not included with a default anaconda install are included 
 
 setup.sh and setup_gpu.sh approximatly runs the following commands
+setup_jupyter.sh does not use Anaconda, but installs to --user of default python
 
 conda create --name Deep_Gaming python=3.5.5
 

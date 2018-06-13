@@ -4,7 +4,7 @@ virtual_env="Deep_Gaming_GPU"
 pip install --user numpy
 pip install --user matplotlib
 pip install --user imageio
-pip install --user tensorflow
+pip install --user tensorflow-gpu==1.4.0-rc1
 pip install --user gym
 pip install --user cmake
 pip install --user gym[atari]
