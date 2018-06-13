@@ -119,6 +119,8 @@ class deepQ():
             #Select optimizer type
             optimizer = tf.train.MomentumOptimizer(self.learning_rate, self.momentum, use_nesterov=True)
 
+            #NOTE: This is the same loss function found at, though the implementation has been changed:
+            #https://github.com/ageron/handson-ml/blob/master/16_reinforcement_learning.ipynb
             with tf.variable_scope("train") as scope:
                 self.action = tf.placeholder(tf.int32, shape=[None])
                 self.sampled_vals = tf.placeholder(tf.float32, shape=[None, 1])
@@ -208,6 +210,9 @@ class deepQ():
                 self.env.render()
         return self.preprocess_func(obs)
     def train(self):
+
+        #NOTE: This is a very heavily modifed version of the framework found at:
+        #https://github.com/ageron/handson-ml/blob/master/16_reinforcement_learning.ipynb
         self.env.reset()
        
         run_string = "%s_%s"%(self.game_type,self.network_name)
