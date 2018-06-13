@@ -91,7 +91,15 @@ pip install gym[atari]
 
 conda install -c https://conda.anaconda.org/kne pybox2d #Only needed for CarRacing, can be ignored if causes problems
 
+source deactivate
+
+ipython kernel install --user --name=${virtual_env}
+
+echo "Please disconnect, then reconnect to server to restart Jupyter session"
+
 echo "Please run <source activate" ${virtual_env} ">"
+
+The Jupyter session must "PROBABLY" then be restarted by logging out and logging back into server, restarting the notebook session
 
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 

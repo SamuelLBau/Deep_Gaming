@@ -9,4 +9,7 @@ pip install gym
 pip install cmake
 pip install gym[atari]
 conda install -c https://conda.anaconda.org/kne pybox2d
+source deactivate
+ipython kernel install --user --name=${virtual_env}
+echo "Please disconnect, then reconnect to server to restart Jupyter session"
 echo "Please run <source activate" ${virtual_env} ">"
