@@ -3,10 +3,46 @@ This project will attempt to implement a deep Q algorithm to learn how to play v
 This project is primarily built using tensorflow.
 
 **===============================================================================**
-                                **Setting up**
+                                **Getting Code**
 **===============================================================================**
 The code base can be cloned using the following command:
     git clone https://github.com/SamuelLBau/Deep_Gaming.git
+    
+
+**===============================================================================**
+                              **Code Organization**
+**===============================================================================**
+
+Deep_Gaming/
+  doc/               # Miscellaneous Reports, proposals and example results
+    example_results/ #.gif files of each game being run by network
+    final_report/    #All Latex files used to generate final report .pdf
+  src/               #All code for the project
+    * Described below
+  .gitignore
+  README.rst
+  setup.sh           #Prepares Anaconda Virtual Environment for project, tensorflow for CPU
+  setup_GPU.sh       #Prepares Anaconda Virtual Environment for project, tensorflow for GPU
+
+Deep_Gaming/src
+  cfn/               #Contains all network description files (.prototxt files)
+  sample_networks/   #Contains sample networks. Do not edit these files when testing.
+  saved_networks/    #Contains all networks trained and saved by system. (Generated during run)
+  
+  caffe_builder.py        #Builds network from description file
+  caffe_builder_utils.py  #Utility functions for above
+  
+  deepQ.py                #Main file for learning, can be used without the run_*_example.py files
+  load_sample_networks.py #Loads sample networks from sample_networks/ to /saved_networks. Use to reset space
+  generate_graphs.py      #Used to generate graphs of score and Q sum over various games
+  
+  run_test_example.py     #Used to configure and run pre-trained networks to generate example episodes
+  run_training_example.py #Used to configure and train networks on selected environments
+  snake_game.py           #Simple snake environment, can be used in place of gym environments
+  
+**===============================================================================**
+                                **Setting up**
+**===============================================================================**
 
 The python environment for this code base can by prepared by running setup.sh, or setup_GPU.sh if a GPU is available.
 If running on a windows machine, the script should also work as a .cmd file, or each command can be run manually
@@ -86,7 +122,42 @@ python generate_graphs.py --dir <dir_path>
 **===============================================================================**
     #The main program file is deepQ.py, it accepts the following command line arguments:
     
-    
+    Required:
+      --env <string>    #The environment you want to run, supports {snake,MsPacman-v0,CarRacing-v0,Asteroids-v0}
+      --proto <string>  #Path to .prototxt file ex: cfn/MsPacman-v0.prototxt
+      
+    Recommended: (Do not use them all, but keep them in mind)
+      --fresh           #Include to wipe the existing network (If there is one) and begin anew
+      --save_rewards    #Include to save the .reward and .qs files used in plotting improvement over time
+      --test            #Include to generate an example run instead of a training run (Generates Example_run.gif)
+      --max_neg_reward_steps <int> #Include to stop run early if too many consecutive negative rewards occur
+      --game_skip <int>  #Number of frames to skip every time environment is reset
+      
+    Other:
+      --n_steps <int>    #Number of training steps to take (Training will not occur if this number is less that # already completed)
+      
+      --n_prev_states <int>         #Number of previous states to hold in memory, network will perform poorly if this is too small to represent environment
+      --checkpoint_interval <int>   #Interval at which a checkpoint of the network is saved
+      --target_update_interval<int> #Interval at which agent is copied to target agent
+      
+      --learning_interval <int>     #Interval at which network should learn
+      --minibatch_size <int>        #Number of samples target network should examine when estimating Q
+      
+      --momentum <float>            #Momentum value passed to momentum SGD optimizer
+      --learning_rate <float>       #Learning rate passed to momentum SGD optimizer
+      
+      --epsilon_min <float>         #Minimum probability of taking random action during training
+      --epsilon_max <float>         #Maximum probability of taking random action during training
+      --epsion_steps <int>          #Number of steps to linearly go from epsilon max to epsilon min
+      
+      --discount <float>            #Amount to discount the target estimate Q
+
+      
+    Example uses:
+
+      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --learning_interval 4 --save_rewards
+      
+      python deepQ.py --env CarRacing-v0 --proto cfn/CarRacing-v0.prototxt --max_neg_reward_steps 150 --save_rewards --fresh
 
 **===============================================================================**
                                 **Miscellaneous References**

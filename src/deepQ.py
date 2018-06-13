@@ -588,6 +588,6 @@ if __name__ == "__main__":
 
     if run_test:
         anim,score,frames = network.run_test()
-        network.play_test(anim,frames)
+        network.play_test(anim,frames,gif_path="Example_run.gif")
     else:
         network.train()
