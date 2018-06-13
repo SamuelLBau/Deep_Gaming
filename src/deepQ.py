@@ -465,7 +465,6 @@ frame_list = []
 frame_num = 1
 _preprocess_func = None
 if __name__ == "__main__":
-    global _preprocess_func
     env = None
     render=False
 
