@@ -157,6 +157,8 @@ python generate_graphs.py --dir <dir_path>
 
       python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --learning_interval 4 --save_rewards
       
+      python deepQ.py --env MsPacman-v0 --proto cfn/MsPacman-v0.prototxt --test
+      
       python deepQ.py --env CarRacing-v0 --proto cfn/CarRacing-v0.prototxt --max_neg_reward_steps 150 --save_rewards --fresh
 
 **===============================================================================**
