@@ -82,7 +82,6 @@ def configure_mspacman_training():
     args["learning_interval"] = 4
 
     args["save_rewards"] = True
-    args["jupyter_prints"] = True
 
     return args
     
@@ -113,7 +112,7 @@ def configure_carracing_training():
     args["save_rewards"] = True
     args["learning_interval"] = 1
     args["max_neg_reward_steps"] = 150
-    args["jupyter_prints"] = True
+    
     return args
 
 def configure_snake_training():
@@ -128,7 +127,7 @@ def configure_snake_training():
     args["game_skip"] = 0
     args["minibatch_size"] = 30
     args["learning_interval"] = 1
-    args["jupyter_prints"] = True
+    
     return args
 
 def configure_asteroids_training():
@@ -154,7 +153,7 @@ def configure_asteroids_training():
     args["learning_interval"] = 1
 
     args["save_rewards"] = True
-    args["jupyter_prints"] = True
+    
     return args   
     
     

@@ -40,15 +40,22 @@ Deep_Gaming/src
   
   caffe_builder_utils.py  #Utility functions for above
   
-  deepQ.py                #Main file for learning, can be used without the run_*_example.py files
+  deepQ.py                #Main file for learning, can be used without the run_*_demo.py files
   
   load_sample_networks.py #Loads sample networks from sample_networks/ to /saved_networks. Use to reset space
   
   generate_graphs.py      #Used to generate graphs of score and Q sum over various games
   
-  run_test_example.py     #Used to configure and run pre-trained networks to generate example episodes
+  run_test_demo.py     #Used to configure and run pre-trained networks to generate demo episodes
   
-  run_training_example.py #Used to configure and train networks on selected environments
+  run_test_demo.ipynb  #Same as above, but as a notebook. This has more or less the same functionality, but is able to display the final frame of the gameplay.
+  .gif files are still generated. We have been unable to test this on the server.
+  
+  run_training_demo.py #Used to configure and train networks on selected environments
+  
+  run_training_demo.ipynb #Same as above, but as a notebook. We have been unable to test this on the server. 
+  The training has no display that is of any interest, we recommend using the .py file as it has cleaner and more
+  descriptive print statements.
   
   snake_game.py           #Simple snake environment, can be used in place of gym environments
   
@@ -89,17 +96,17 @@ echo "Please run <source activate" ${virtual_env} ">"
 The virtual environment can then be loaded using <source activate Deep_Gaming> or <source activate Deep_Gaming_GPU>
 
 **===============================================================================**
-                                **Running Examples**
+                                **Running Demos**
 **===============================================================================**
 
 python load_sample_networks.py:
     #This will load networks into the work area (saved_networks)
     #If this will cause existing networks to be overwritten, confirmation will be required
-    #This must be used before using run_test the first time, unless run_training_example has been
+    #This must be used before using run_test the first time, unless run_training_demo has been
     #run for the specified environment
     
-python run_test_example.py [--env <env_name>]:
-    #By default, this will run the MsPacman example, as a decent sample network has been provided
+python run_test_demo.py [--env <env_name>]:
+    #By default, this will run the MsPacman demo, as a decent sample network has been provided
     #It will generate a .gif file of the episode
     
     #You can choose to run a different environment by adding a --env <environment_name> flag
@@ -111,7 +118,7 @@ python run_test_example.py [--env <env_name>]:
     #Which can be loaded to another computer to play
     #Also NOTE: CarRacing-v0 in particular only works when rendering is enabled, so it will not run on the server
     
-python run_training_example.py [--env <env_name>]:
+python run_training_demo.py [--env <env_name>]:
     #By default, this will run train MsPacman, as a decent sample network has been provided
     #network
     
@@ -141,7 +148,7 @@ python generate_graphs.py --dir <dir_path>
     Recommended: (Do not use them all, but keep them in mind)
       --fresh           #Include to wipe the existing network (If there is one) and begin anew
       --save_rewards    #Include to save the .reward and .qs files used in plotting improvement over time
-      --test            #Include to generate an example run instead of a training run (Generates Example_run.gif)
+      --test            #Include to generate an demo run instead of a training run (Generates Example_run.gif)
       --max_neg_reward_steps <int> #Include to stop run early if too many consecutive negative rewards occur
       --game_skip <int>  #Number of frames to skip every time environment is reset
       
