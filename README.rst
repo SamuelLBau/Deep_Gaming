@@ -16,28 +16,40 @@ The code base can be cloned using the following command:
 Deep_Gaming/
   doc/               # Miscellaneous Reports, proposals and example results
     example_results/ #.gif files of each game being run by network
+    
     final_report/    #All Latex files used to generate final report .pdf
   src/               #All code for the project
     * Described below
+    
   .gitignore
+  
   README.rst
+  
   setup.sh           #Prepares Anaconda Virtual Environment for project, tensorflow for CPU
+  
   setup_GPU.sh       #Prepares Anaconda Virtual Environment for project, tensorflow for GPU
 
 Deep_Gaming/src
   cfn/               #Contains all network description files (.prototxt files)
+  
   sample_networks/   #Contains sample networks. Do not edit these files when testing.
+  
   saved_networks/    #Contains all networks trained and saved by system. (Generated during run)
   
   caffe_builder.py        #Builds network from description file
+  
   caffe_builder_utils.py  #Utility functions for above
   
   deepQ.py                #Main file for learning, can be used without the run_*_example.py files
+  
   load_sample_networks.py #Loads sample networks from sample_networks/ to /saved_networks. Use to reset space
+  
   generate_graphs.py      #Used to generate graphs of score and Q sum over various games
   
   run_test_example.py     #Used to configure and run pre-trained networks to generate example episodes
+  
   run_training_example.py #Used to configure and train networks on selected environments
+  
   snake_game.py           #Simple snake environment, can be used in place of gym environments
   
 **===============================================================================**
